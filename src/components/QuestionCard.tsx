@@ -1,4 +1,4 @@
-import { Question, getCategoryColor, getDifficultyColor, categoryLabels } from '@/lib/mockData';
+import { Question, getDifficultyColor, categoryLabels } from '@/lib/mockData';
 
 interface QuestionCardProps {
   question: Question;
@@ -6,25 +6,32 @@ interface QuestionCardProps {
   totalQuestions: number;
 }
 
+const categoryAbbrev: Record<string, string> = {
+  strategy: 'Strat',
+  metrics: 'Metr',
+  prioritization: 'Prior',
+  design: 'Dsgn',
+};
+
 const QuestionCard = ({ question, currentIndex, totalQuestions }: QuestionCardProps) => {
   return (
-    <div className="bg-card rounded-2xl shadow-card p-6 sm:p-8 space-y-4 animate-slide-up">
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-muted-foreground font-medium">
-          Question {currentIndex} of {totalQuestions}
+    <div className="bg-card border border-border p-5 space-y-4">
+      <div className="flex items-center gap-3 text-sm">
+        <span className="text-muted-foreground font-mono">
+          {currentIndex}/{totalQuestions}
         </span>
-        <span className="text-muted-foreground">•</span>
-        <span className={`px-3 py-1 rounded-full font-medium ${getCategoryColor(question.category)}`}>
-          {categoryLabels[question.category]}
+        <span className="text-border">|</span>
+        <span className="text-muted-foreground">
+          {categoryAbbrev[question.category]}
         </span>
-        <span className={`px-3 py-1 rounded-full font-medium ${getDifficultyColor(question.difficulty)}`}>
-          {question.difficulty}
+        <span className={`font-mono text-xs ${getDifficultyColor(question.difficulty)}`}>
+          {question.difficulty.charAt(0)}
         </span>
       </div>
       
-      <h2 className="text-lg sm:text-xl font-semibold text-foreground leading-relaxed">
+      <p className="text-foreground leading-relaxed">
         {question.text}
-      </h2>
+      </p>
     </div>
   );
 };

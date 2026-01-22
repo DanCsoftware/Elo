@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface HintSectionProps {
   hint: string;
@@ -9,26 +9,23 @@ const HintSection = ({ hint }: HintSectionProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="bg-secondary rounded-xl overflow-hidden">
+    <div className="border border-border">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-secondary/80 transition-colors"
+        className="w-full flex items-center justify-between p-3 text-left hover:bg-secondary transition-colors"
       >
-        <div className="flex items-center gap-2">
-          <Lightbulb className="w-5 h-5 text-warning" />
-          <span className="font-medium text-foreground">Need a hint?</span>
-        </div>
+        <span className="text-sm text-muted-foreground">Hint</span>
         {isOpen ? (
-          <ChevronUp className="w-5 h-5 text-muted-foreground" />
+          <ChevronUp className="w-4 h-4 text-muted-foreground" />
         ) : (
-          <ChevronDown className="w-5 h-5 text-muted-foreground" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
         )}
       </button>
       
       {isOpen && (
-        <div className="px-4 pb-4 animate-slide-up">
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            💡 {hint}
+        <div className="px-3 pb-3 border-t border-border">
+          <p className="text-sm text-muted-foreground pt-3">
+            {hint}
           </p>
         </div>
       )}

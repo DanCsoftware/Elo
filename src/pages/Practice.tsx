@@ -13,12 +13,11 @@ const Practice = () => {
   const [answer, setAnswer] = useState('');
 
   const currentQuestion = questions[currentQuestionIndex];
-  const totalQuestions = 50; // Display as 50 even if we have fewer mock questions
+  const totalQuestions = 50;
   const canSubmit = answer.trim().length > 0;
 
   const handleSubmit = () => {
     if (canSubmit) {
-      // In a real app, this would send the answer to an API for evaluation
       navigate('/feedback', { state: { answer, question: currentQuestion } });
     }
   };
@@ -31,40 +30,37 @@ const Practice = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 max-w-2xl mx-auto">
+      <div className="space-y-4 max-w-3xl mx-auto">
         <QuestionCard
           question={currentQuestion}
           currentIndex={currentQuestionIndex + 1}
           totalQuestions={totalQuestions}
         />
 
-        <div className="space-y-4">
-          <AnswerTextarea
-            value={answer}
-            onChange={setAnswer}
-            placeholder="Type your answer here... Be specific and structure your thoughts clearly."
-          />
+        <AnswerTextarea
+          value={answer}
+          onChange={setAnswer}
+          placeholder="Type your answer here..."
+        />
 
-          <HintSection hint={currentQuestion.hint} />
+        <HintSection hint={currentQuestion.hint} />
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <Button
-              variant="gradient"
-              size="lg"
-              className="flex-1"
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-            >
-              Submit Answer
-            </Button>
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={handleSkip}
-            >
-              Skip Question
-            </Button>
-          </div>
+        <div className="flex gap-3 pt-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+          >
+            Submit
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleSkip}
+          >
+            Skip
+          </Button>
         </div>
       </div>
     </Layout>

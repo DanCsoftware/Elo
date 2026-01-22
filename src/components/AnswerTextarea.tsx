@@ -20,29 +20,19 @@ const AnswerTextarea = ({
   };
 
   const characterCount = value.length;
-  const isNearLimit = characterCount > maxLength * 0.8;
-  const isAtLimit = characterCount >= maxLength;
 
   return (
-    <div className="space-y-2">
+    <div className="relative">
       <textarea
         value={value}
         onChange={handleChange}
         placeholder={placeholder}
-        className="w-full min-h-[200px] p-4 rounded-xl border border-input bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none transition-all"
+        className="w-full min-h-[240px] p-4 bg-card border border-border text-foreground font-mono text-sm placeholder:text-muted-foreground focus:outline-none focus:border-muted-foreground resize-none transition-colors"
         aria-label="Your answer"
       />
-      <div className="flex justify-end">
-        <span
-          className={`text-sm font-medium transition-colors ${
-            isAtLimit
-              ? 'text-destructive'
-              : isNearLimit
-              ? 'text-warning'
-              : 'text-muted-foreground'
-          }`}
-        >
-          {characterCount.toLocaleString()} / {maxLength.toLocaleString()}
+      <div className="absolute bottom-3 right-3">
+        <span className="text-xs font-mono text-muted-foreground">
+          {characterCount}/{maxLength}
         </span>
       </div>
     </div>

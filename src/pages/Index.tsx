@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { Flame, Target, TrendingUp, BarChart3 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import StatCard from '@/components/StatCard';
 import SkillBar from '@/components/SkillBar';
@@ -9,72 +8,62 @@ import { userStats, skillProgress } from '@/lib/mockData';
 const Index = () => {
   return (
     <Layout>
-      <div className="space-y-8">
-        {/* Hero Section */}
-        <section className="text-center space-y-3 py-4">
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Level up your PM skills
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Practice real interview questions and get instant feedback
-          </p>
-        </section>
-
+      <div className="space-y-6">
         {/* Stats Grid */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-border">
           <StatCard
-            icon={<Flame className="text-warning" />}
-            label="Current Streak"
+            label="Solved"
+            value={`${userStats.totalAnswered}/${userStats.totalQuestions}`}
+          />
+          <StatCard
+            label="Streak"
             value={userStats.streak}
             suffix=" days"
           />
           <StatCard
-            icon={<Target className="text-primary" />}
-            label="Questions Answered"
-            value={userStats.totalAnswered}
-          />
-          <StatCard
-            icon={<BarChart3 className="text-success" />}
-            label="Average Score"
+            label="Avg Score"
             value={userStats.avgScore.toFixed(1)}
-            suffix="/10"
           />
           <StatCard
-            icon={<TrendingUp className="text-accent" />}
             label="This Week"
             value={`+${userStats.weeklyImprovement}%`}
-            trend={{ value: userStats.weeklyImprovement, isPositive: true }}
           />
+          <div className="bg-card border border-border p-4 col-span-2 md:col-span-1 lg:col-span-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Difficulty</p>
+            <div className="flex items-center gap-4 font-mono text-sm">
+              <span className="text-success">E: {userStats.easyCount}</span>
+              <span className="text-warning">M: {userStats.mediumCount}</span>
+              <span className="text-destructive">H: {userStats.hardCount}</span>
+            </div>
+          </div>
         </section>
 
-        {/* Skill Breakdown */}
-        <section className="bg-card rounded-2xl shadow-card p-6 space-y-5">
+        {/* Category Performance */}
+        <section className="bg-card border border-border p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Skill Breakdown</h2>
-            <span className="text-sm text-muted-foreground">Based on your answers</span>
+            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Category Performance</h2>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {skillProgress.map((skill) => (
               <SkillBar
                 key={skill.name}
                 name={skill.name}
                 percentage={skill.percentage}
-                category={skill.category}
               />
             ))}
           </div>
         </section>
 
-        {/* Action Buttons */}
-        <section className="flex flex-col sm:flex-row gap-3 pt-4">
-          <Button variant="gradient" size="lg" className="flex-1" asChild>
+        {/* Action Button */}
+        <section className="flex gap-3">
+          <Button variant="default" size="sm" asChild>
             <Link to="/practice">
-              🎯 Start Daily Practice
+              Practice
             </Link>
           </Button>
-          <Button variant="outline" size="lg" className="flex-1" asChild>
+          <Button variant="secondary" size="sm" asChild>
             <Link to="/history">
-              📚 Review Past Answers
+              History
             </Link>
           </Button>
         </section>
