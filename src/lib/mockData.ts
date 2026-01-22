@@ -1,8 +1,12 @@
 export interface UserStats {
   streak: number;
   totalAnswered: number;
+  totalQuestions: number;
   avgScore: number;
   weeklyImprovement: number;
+  easyCount: number;
+  mediumCount: number;
+  hardCount: number;
 }
 
 export interface SkillProgress {
@@ -41,8 +45,12 @@ export interface HistoryItem {
 export const userStats: UserStats = {
   streak: 7,
   totalAnswered: 23,
+  totalQuestions: 200,
   avgScore: 6.8,
   weeklyImprovement: 12,
+  easyCount: 8,
+  mediumCount: 10,
+  hardCount: 5,
 };
 
 export const skillProgress: SkillProgress[] = [
@@ -166,20 +174,14 @@ export const categoryLabels: Record<Category, string> = {
 };
 
 export const getCategoryColor = (category: Category): string => {
-  const colors: Record<Category, string> = {
-    strategy: 'bg-primary/10 text-primary',
-    metrics: 'bg-success/10 text-success',
-    prioritization: 'bg-warning/10 text-warning',
-    design: 'bg-accent/10 text-accent',
-  };
-  return colors[category];
+  return 'text-muted-foreground';
 };
 
 export const getDifficultyColor = (difficulty: Difficulty): string => {
   const colors: Record<Difficulty, string> = {
-    Easy: 'bg-success/10 text-success',
-    Medium: 'bg-warning/10 text-warning',
-    Hard: 'bg-destructive/10 text-destructive',
+    Easy: 'text-success',
+    Medium: 'text-warning',
+    Hard: 'text-destructive',
   };
   return colors[difficulty];
 };

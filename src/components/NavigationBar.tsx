@@ -1,29 +1,27 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, BookOpen, History } from 'lucide-react';
 
 const NavigationBar = () => {
   const location = useLocation();
 
   const links = [
-    { to: '/', label: 'Dashboard', icon: Home },
-    { to: '/practice', label: 'Practice', icon: BookOpen },
-    { to: '/history', label: 'History', icon: History },
+    { to: '/', label: 'Overview' },
+    { to: '/practice', label: 'Practice' },
+    { to: '/history', label: 'History' },
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border">
-      <div className="container max-w-4xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center">
-              <span className="text-lg font-bold text-primary-foreground">P</span>
+    <header className="sticky top-0 z-50 bg-card border-b border-border">
+      <div className="container max-w-5xl mx-auto px-4">
+        <div className="flex items-center h-12">
+          <Link to="/" className="flex items-center gap-2 mr-8">
+            <div className="w-6 h-6 bg-success rounded flex items-center justify-center">
+              <span className="text-xs font-bold text-success-foreground">A</span>
             </div>
-            <span className="text-xl font-bold text-foreground">Palpha</span>
+            <span className="text-sm font-semibold text-foreground">Alpa</span>
           </Link>
           
           <nav className="flex items-center gap-1">
             {links.map((link) => {
-              const Icon = link.icon;
               const isActive = location.pathname === link.to || 
                 (link.to === '/practice' && location.pathname === '/feedback');
               
@@ -31,14 +29,13 @@ const NavigationBar = () => {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-1.5 text-sm transition-colors ${
                     isActive
-                      ? 'gradient-primary text-primary-foreground'
+                      ? 'text-foreground bg-secondary'
                       : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{link.label}</span>
+                  {link.label}
                 </Link>
               );
             })}

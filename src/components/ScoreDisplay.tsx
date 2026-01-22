@@ -10,33 +10,20 @@ const ScoreDisplay = ({ score, size = 'lg' }: ScoreDisplayProps) => {
     return 'text-destructive';
   };
 
-  const getScoreEmoji = () => {
-    if (score >= 8) return '🚀';
-    if (score >= 6) return '⚡';
-    return '💪';
-  };
-
-  const getScoreBgColor = () => {
-    if (score >= 8) return 'bg-success/10';
-    if (score >= 6) return 'bg-warning/10';
-    return 'bg-destructive/10';
-  };
-
   if (size === 'sm') {
     return (
-      <span className={`font-bold ${getScoreColor()}`}>
+      <span className={`font-mono font-semibold ${getScoreColor()}`}>
         {score.toFixed(1)}
       </span>
     );
   }
 
   return (
-    <div className={`inline-flex flex-col items-center justify-center p-8 rounded-2xl ${getScoreBgColor()}`}>
-      <span className="text-4xl mb-2">{getScoreEmoji()}</span>
-      <div className={`text-5xl font-bold ${getScoreColor()}`}>
+    <div className="text-center">
+      <div className={`text-5xl font-mono font-bold ${getScoreColor()}`}>
         {score.toFixed(1)}
-        <span className="text-2xl text-muted-foreground font-medium">/10</span>
       </div>
+      <div className="text-sm text-muted-foreground mt-1">out of 10</div>
     </div>
   );
 };
