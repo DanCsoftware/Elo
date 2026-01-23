@@ -5,46 +5,10 @@ import QuestionCard from '@/components/QuestionCard';
 import AnswerTextarea from '@/components/AnswerTextarea';
 import HintSection from '@/components/HintSection';
 import { Button } from '@/components/ui/button';
-import { Question } from '@/lib/supabase';
+import { supabase, Question } from '@/lib/supabase';
 import { evaluateAnswer } from '@/lib/gemini';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-
-// Mock questions until database tables are created
-const mockQuestions: Question[] = [
-  {
-    id: '1',
-    text: 'You are the PM for Instagram Stories. Engagement has dropped 15% over the last quarter. How would you diagnose the problem and what solutions would you propose?',
-    category: 'strategy',
-    difficulty: 'hard',
-    hint: 'Consider user segments, competitive analysis, and both qualitative and quantitative data sources.',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    text: 'Define the key metrics you would track for a new food delivery app. How would you prioritize them?',
-    category: 'metrics',
-    difficulty: 'medium',
-    hint: 'Think about the user journey from discovery to repeat orders.',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    text: 'You have limited engineering resources and three features in your backlog: improved search, social sharing, and dark mode. How do you prioritize?',
-    category: 'prioritization',
-    difficulty: 'medium',
-    hint: 'Consider frameworks like RICE or impact vs effort matrices.',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    text: 'Design a notification system for a task management app. What types of notifications would you include and why?',
-    category: 'design',
-    difficulty: 'easy',
-    hint: 'Balance keeping users informed with avoiding notification fatigue.',
-    created_at: new Date().toISOString(),
-  },
-];
 
 const Practice = () => {
   const navigate = useNavigate();
@@ -54,13 +18,36 @@ const Practice = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRandomQuestion = () => {
+  const fetchRandomQuestion = async () => {
     setLoading(true);
     setError(null);
-    // Pick a random question from mock data
-    const randomIndex = Math.floor(Math.random() * mockQuestions.length);
-    setQuestion(mockQuestions[randomIndex]);
-    setLoading(false);
+    try {
+      // Get total count first
+      const { count, error: countError } = await supabase
+        .from('questions')
+        .select('*', { count: 'exact', head: true });
+
+      if (countError) throw countError;
+      if (!count || count === 0) throw new Error('No questions available');
+
+      // Get a random offset
+      const randomOffset = Math.floor(Math.random() * count);
+
+      // Fetch one random question
+      const { data, error: fetchError } = await supabase
+        .from('questions')
+        .select('*')
+        .range(randomOffset, randomOffset)
+        .single();
+
+      if (fetchError) throw fetchError;
+      setQuestion(data as Question);
+    } catch (err) {
+      console.error('Error fetching question:', err);
+      setError('Failed to load question. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -82,8 +69,23 @@ const Practice = () => {
         question.difficulty
       );
 
-      // TODO: Save to database once tables are created
-      // For now, just navigate to feedback page
+      // Save to user_sessions table in external Supabase
+      const { error: saveError } = await supabase
+        .from('user_sessions')
+        .insert({
+          question_id: question.id,
+          answer_text: answer,
+          score: feedback.score,
+          strengths: feedback.strengths,
+          weaknesses: feedback.weaknesses,
+          detailed_feedback: feedback.detailedFeedback,
+          category_scores: feedback.categoryScores,
+        });
+
+      if (saveError) {
+        console.error('Error saving session:', saveError);
+        toast.error('Failed to save session, but showing feedback.');
+      }
 
       // Navigate to feedback page with data
       navigate('/feedback', {
