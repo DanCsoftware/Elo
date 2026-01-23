@@ -1,5 +1,3 @@
-import { config } from '@/config/keys'
-
 export interface FeedbackResult {
   score: number
   strengths: string[]
@@ -13,7 +11,10 @@ export interface FeedbackResult {
   }
 }
 
-const EDGE_FUNCTION_URL = `${config.supabaseUrl}/functions/v1/evaluate-answer`
+// Use Lovable Cloud's Supabase for Edge Functions
+const LOVABLE_CLOUD_URL = 'https://amalmykklpugtdeghooq.supabase.co'
+const LOVABLE_CLOUD_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtYWxteWtrbHB1Z3RkZWdob29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMzkxMDUsImV4cCI6MjA4NDcxNTEwNX0.5goe3_ZQvtpUg2fgLPpswmZ0FhtcgCb_wboNv3-O1OU'
+const EDGE_FUNCTION_URL = `${LOVABLE_CLOUD_URL}/functions/v1/evaluate-answer`
 
 export async function evaluateAnswer(
   question: string,
@@ -21,12 +22,14 @@ export async function evaluateAnswer(
   category: string,
   difficulty: string
 ): Promise<FeedbackResult> {
+  console.log('Calling Edge Function:', EDGE_FUNCTION_URL)
+  
   try {
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.supabaseAnonKey}`,
+        'Authorization': `Bearer ${LOVABLE_CLOUD_ANON_KEY}`,
       },
       body: JSON.stringify({
         question,
@@ -36,12 +39,22 @@ export async function evaluateAnswer(
       }),
     })
 
+    console.log('Edge Function response status:', response.status)
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
+      const errorText = await response.text()
+      console.error('Edge Function error response:', errorText)
+      let errorData
+      try {
+        errorData = JSON.parse(errorText)
+      } catch {
+        errorData = { error: errorText }
+      }
       throw new Error(errorData.error || `Failed to evaluate answer (${response.status})`)
     }
 
     const feedback: FeedbackResult = await response.json()
+    console.log('Edge Function feedback received:', feedback)
 
     if (!feedback.score || !feedback.strengths || !feedback.weaknesses) {
       throw new Error('Invalid feedback structure from API')
