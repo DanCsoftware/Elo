@@ -15,7 +15,7 @@ const NavigationBar = () => {
       <div className="container max-w-5xl mx-auto px-4">
         <div className="flex items-center h-12">
           <Link to="/" className="flex items-center gap-2 mr-8">
-            <img src={alpacaMascot} alt="Alpa mascot" className="w-7 h-7 object-contain" />
+            <img src={alpacaMascot} alt="Alpa mascot" className="w-7 h-7 object-contain transition-transform duration-300 hover:rotate-12 hover:scale-110" />
             <span className="text-sm font-semibold text-foreground">Alpa</span>
           </Link>
           
