@@ -1,19 +1,40 @@
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import ScoreDisplay from '@/components/ScoreDisplay';
-import FeedbackCard from '@/components/FeedbackCard';
 import { Button } from '@/components/ui/button';
-import { sampleFeedback } from '@/lib/mockData';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { Check, X } from 'lucide-react';
+import { FeedbackResult } from '@/lib/gemini';
+import { Question } from '@/lib/supabase';
+
+interface LocationState {
+  feedback: FeedbackResult;
+  question: Question;
+  answer: string;
+}
+
+const getScoreColor = (score: number): string => {
+  if (score >= 8) return 'text-success';
+  if (score >= 6) return 'text-warning';
+  return 'text-destructive';
+};
 
 const Feedback = () => {
   const navigate = useNavigate();
-  const feedback = sampleFeedback;
+  const location = useLocation();
+  const state = location.state as LocationState | null;
 
-  const chartData = feedback.recentScores.map((score, index) => ({
-    name: `${index + 1}`,
-    score,
-  }));
+  // Handle case where page is accessed directly without state
+  if (!state?.feedback) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+          <p className="text-muted-foreground">No feedback data available.</p>
+          <Button onClick={() => navigate('/practice')}>Go to Practice</Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const { feedback, question } = state;
 
   const handleNextQuestion = () => {
     navigate('/practice');
@@ -22,76 +43,91 @@ const Feedback = () => {
   return (
     <Layout>
       <div className="space-y-6 max-w-3xl mx-auto">
+        {/* Question Reference */}
+        <section className="bg-card border border-border p-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Question</p>
+          <p className="text-sm text-foreground leading-relaxed">{question.text}</p>
+        </section>
+
         {/* Score Section */}
         <section className="bg-card border border-border p-6 flex flex-col items-center">
-          <ScoreDisplay score={feedback.score} />
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Your Score</p>
+          <span className={`text-5xl font-mono font-bold ${getScoreColor(feedback.score)}`}>
+            {feedback.score.toFixed(1)}
+          </span>
+          <span className="text-muted-foreground font-mono text-lg">/10</span>
         </section>
 
         {/* Feedback Cards - Two Column */}
         <section className="grid md:grid-cols-2 gap-6">
-          <div className="bg-card border border-border p-5">
-            <FeedbackCard
-              title="Strengths"
-              items={feedback.strengths}
-              type="success"
-            />
+          {/* What You Did Well */}
+          <div className="bg-card border border-border p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+              What You Did Well
+            </h3>
+            <ul className="space-y-2">
+              {feedback.strengths.map((strength, index) => (
+                <li key={index} className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{strength}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="bg-card border border-border p-5">
-            <FeedbackCard
-              title="Areas to Improve"
-              items={feedback.improvements}
-              type="improvement"
-            />
+
+          {/* Where to Improve */}
+          <div className="bg-card border border-border p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+              Where to Improve
+            </h3>
+            <ul className="space-y-2">
+              {feedback.weaknesses.map((weakness, index) => (
+                <li key={index} className="flex items-start gap-2 text-sm">
+                  <X className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+                  <span className="text-muted-foreground">{weakness}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
         {/* Detailed Feedback */}
         <section className="bg-card border border-border p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Detailed Feedback</h3>
-          <p className="text-sm font-mono text-muted-foreground leading-relaxed">
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+            Detailed Feedback
+          </h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">
             {feedback.detailedFeedback}
           </p>
         </section>
 
-        {/* Score Trend */}
+        {/* Category Scores */}
         <section className="bg-card border border-border p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Score Trend</h3>
-          <div className="h-32">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false}
-                  tick={{ fill: 'hsl(240 5% 64%)', fontSize: 12 }}
-                />
-                <YAxis 
-                  domain={[0, 10]} 
-                  axisLine={false} 
-                  tickLine={false}
-                  tick={{ fill: 'hsl(240 5% 64%)', fontSize: 12 }}
-                  width={30}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="score" 
-                  stroke="hsl(160 84% 39%)" 
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(160 84% 39%)', strokeWidth: 0, r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+            Category Breakdown
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(feedback.categoryScores).map(([category, score]) => (
+              <div key={category} className="text-center">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                  {category}
+                </p>
+                <span className={`text-xl font-mono font-bold ${getScoreColor(score)}`}>
+                  {score}
+                </span>
+              </div>
+            ))}
           </div>
         </section>
 
         {/* Action Buttons */}
         <section className="flex gap-3">
           <Button variant="default" size="sm" onClick={handleNextQuestion}>
-            Next
+            Next Question
           </Button>
           <Button variant="secondary" size="sm" asChild>
-            <Link to="/history">
-              Review
+            <Link to="/">
+              Back to Dashboard
             </Link>
           </Button>
         </section>
