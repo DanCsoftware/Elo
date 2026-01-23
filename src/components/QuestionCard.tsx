@@ -1,4 +1,4 @@
-import { Question, getDifficultyColor, categoryLabels } from '@/lib/mockData';
+import { Question } from '@/lib/supabase';
 
 interface QuestionCardProps {
   question: Question;
@@ -13,6 +13,15 @@ const categoryAbbrev: Record<string, string> = {
   design: 'Dsgn',
 };
 
+const getDifficultyColor = (difficulty: string): string => {
+  const colors: Record<string, string> = {
+    easy: 'text-success',
+    medium: 'text-warning',
+    hard: 'text-destructive',
+  };
+  return colors[difficulty] || 'text-muted-foreground';
+};
+
 const QuestionCard = ({ question, currentIndex, totalQuestions }: QuestionCardProps) => {
   return (
     <div className="bg-card border border-border p-5 space-y-4">
@@ -25,7 +34,7 @@ const QuestionCard = ({ question, currentIndex, totalQuestions }: QuestionCardPr
           {categoryAbbrev[question.category]}
         </span>
         <span className={`font-mono text-xs ${getDifficultyColor(question.difficulty)}`}>
-          {question.difficulty.charAt(0)}
+          {question.difficulty.charAt(0).toUpperCase()}
         </span>
       </div>
       
