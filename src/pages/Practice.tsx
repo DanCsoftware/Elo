@@ -6,13 +6,16 @@ import AnswerTextarea from '@/components/AnswerTextarea';
 import HintSection from '@/components/HintSection';
 import { Button } from '@/components/ui/button';
 import { supabase, Question } from '@/lib/supabase';
+import { evaluateAnswer } from '@/lib/gemini';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Practice = () => {
   const navigate = useNavigate();
   const [question, setQuestion] = useState<Question | null>(null);
   const [answer, setAnswer] = useState('');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRandomQuestion = async () => {
@@ -40,11 +43,53 @@ const Practice = () => {
     fetchRandomQuestion();
   }, []);
 
-  const canSubmit = answer.trim().length > 0;
+  const canSubmit = answer.trim().length > 0 && !submitting;
 
-  const handleSubmit = () => {
-    if (canSubmit && question) {
-      navigate('/feedback', { state: { answer, question } });
+  const handleSubmit = async () => {
+    if (!canSubmit || !question) return;
+
+    setSubmitting(true);
+    try {
+      // Evaluate the answer using Gemini AI
+      const feedback = await evaluateAnswer(
+        question.text,
+        answer,
+        question.category,
+        question.difficulty
+      );
+
+      // Save to user_sessions table (user_id will be added later with auth)
+      const { error: saveError } = await supabase
+        .from('user_sessions')
+        .insert({
+          question_id: question.id,
+          answer_text: answer,
+          score: feedback.score,
+          strengths: feedback.strengths,
+          weaknesses: feedback.weaknesses,
+          detailed_feedback: feedback.detailedFeedback,
+          category_scores: feedback.categoryScores,
+        });
+
+      if (saveError) {
+        console.error('Error saving session:', saveError);
+        // Continue to feedback page even if save fails
+        toast.error('Failed to save your session, but showing feedback.');
+      }
+
+      // Navigate to feedback page with data
+      navigate('/feedback', {
+        state: {
+          feedback,
+          question,
+          answer,
+        },
+      });
+    } catch (err) {
+      console.error('Evaluation error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to evaluate answer. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -102,12 +147,20 @@ const Practice = () => {
             onClick={handleSubmit}
             disabled={!canSubmit}
           >
-            Submit Answer
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Evaluating...
+              </>
+            ) : (
+              'Submit Answer'
+            )}
           </Button>
           <Button
             variant="secondary"
             size="sm"
             onClick={handleSkip}
+            disabled={submitting}
           >
             Skip
           </Button>
