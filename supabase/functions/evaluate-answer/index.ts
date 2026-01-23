@@ -44,9 +44,38 @@ serve(async (req) => {
 
     const { question, answer, category, difficulty }: EvaluationRequest = await req.json();
 
-    if (!question || !answer) {
+    // Validate input lengths
+    if (!question || question.length > 2000) {
       return new Response(
-        JSON.stringify({ error: 'Question and answer are required' }),
+        JSON.stringify({ error: 'Invalid question length (max 2000 chars)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!answer || answer.length < 10 || answer.length > 5000) {
+      return new Response(
+        JSON.stringify({ error: 'Answer must be between 10 and 5000 characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate enum values
+    const validCategories = ['strategy', 'metrics', 'prioritization', 'design', 'product sense', 'execution', 'leadership'];
+    const validDifficulties = ['easy', 'medium', 'hard'];
+
+    const normalizedCategory = category?.toLowerCase() || '';
+    const normalizedDifficulty = difficulty?.toLowerCase() || '';
+
+    if (!validCategories.includes(normalizedCategory)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid category' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!validDifficulties.includes(normalizedDifficulty)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid difficulty' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -97,13 +126,14 @@ Return ONLY valid JSON (no markdown):
   }
 }`;
 
-    // Call Gemini API
+    // Call Gemini API - use header for API key instead of URL parameter
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
+      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': GEMINI_API_KEY,
         },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
