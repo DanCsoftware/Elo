@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import alpacaMascot from '@/assets/alpaca-mascot.png';
 
 const NavigationBar = () => {
   const location = useLocation();
@@ -14,9 +15,7 @@ const NavigationBar = () => {
       <div className="container max-w-5xl mx-auto px-4">
         <div className="flex items-center h-12">
           <Link to="/" className="flex items-center gap-2 mr-8">
-            <div className="w-6 h-6 bg-success rounded flex items-center justify-center">
-              <span className="text-xs font-bold text-success-foreground">A</span>
-            </div>
+            <img src={alpacaMascot} alt="Alpa mascot" className="w-7 h-7 object-contain" />
             <span className="text-sm font-semibold text-foreground">Alpa</span>
           </Link>
           
