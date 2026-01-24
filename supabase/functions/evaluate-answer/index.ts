@@ -25,6 +25,59 @@ interface FeedbackResult {
   };
 }
 
+// 🆕 NEW: Function to generate example answers
+async function generateExampleAnswer(
+  question: string,
+  category: string,
+  difficulty: string,
+  apiKey: string
+): Promise<string> {
+  const examplePrompt = `You are a Senior PM at Google with 10+ years of experience. Write a 9/10 example answer to this PM interview question.
+
+Question: ${question}
+Category: ${category}
+Difficulty: ${difficulty}
+
+Requirements for your answer:
+- Use a recognized framework (CIRCLES, RICE, HEART, etc.) where appropriate
+- Include specific metrics with clear rationale (actual numbers/percentages where possible)
+- Consider multiple user segments explicitly
+- Analyze trade-offs in depth (at least 2-3 trade-offs with second-order effects)
+- Show business acumen (costs, ROI, strategic alignment)
+- 250-400 words
+- Structure: Context/Assumptions → Framework/Approach → Analysis → Recommendation → Metrics → Trade-offs
+
+Write the answer in first person as if you're in the interview. Be specific and concrete, not generic. Use real examples and numbers where appropriate.
+
+Answer:`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: examplePrompt }] }],
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 2048,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Failed to generate example:', errorText);
+    throw new Error('Failed to generate example answer');
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -42,7 +95,32 @@ serve(async (req) => {
       );
     }
 
+    // 🆕 NEW: Check if this is a request for example answer
+    const url = new URL(req.url);
+    const isExampleRequest = url.searchParams.get('type') === 'example';
+
     const { question, answer, category, difficulty }: EvaluationRequest = await req.json();
+
+    // 🆕 NEW: Handle example answer generation
+    if (isExampleRequest) {
+      console.log(`Generating example answer for category: ${category}, difficulty: ${difficulty}`);
+      
+      const exampleAnswer = await generateExampleAnswer(
+        question,
+        category,
+        difficulty,
+        GEMINI_API_KEY
+      );
+
+      console.log('Example answer generated successfully');
+
+      return new Response(
+        JSON.stringify({ exampleAnswer }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ===== ORIGINAL EVALUATION LOGIC CONTINUES =====
 
     // Validate input lengths
     if (!question || question.length > 2000) {
@@ -82,7 +160,7 @@ serve(async (req) => {
 
     console.log(`Evaluating answer for category: ${category}, difficulty: ${difficulty}`);
 
-const prompt = `You are a senior product management interviewer at Google with 10+ years of experience evaluating PM candidates. Your goal is to provide honest, calibrated feedback that helps candidates improve their PM thinking.
+    const prompt = `You are a senior product management interviewer at Google with 10+ years of experience evaluating PM candidates. Your goal is to provide honest, calibrated feedback that helps candidates improve their PM thinking.
 
 QUESTION CONTEXT:
 Question: ${question}
@@ -225,23 +303,23 @@ OUTPUT FORMAT (Return ONLY valid JSON, no markdown):
 
 Remember: Your feedback shapes PM careers. Be honest, be calibrated, be helpful.`;
 
-    // Call Gemini API - use header for API key instead of URL parameter
-const geminiResponse = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024,
-      },
-    }),
-  }
-);
+    // Call Gemini API
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+          },
+        }),
+      }
+    );
 
     if (!geminiResponse.ok) {
       const errorText = await geminiResponse.text();

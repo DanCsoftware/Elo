@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { Check, X } from 'lucide-react';
+import { Check, X, Sparkles, Loader2, ChevronUp } from 'lucide-react';
 import { FeedbackResult } from '@/lib/gemini';
 import { Question } from '@/lib/supabase';
+import { FrameworkTerm } from '@/components/FrameworkTerm';
+import { toast } from 'sonner';
 
 interface LocationState {
   feedback: FeedbackResult;
@@ -21,6 +24,37 @@ const Feedback = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
+  
+  const [showExample, setShowExample] = useState(false);
+  const [exampleAnswer, setExampleAnswer] = useState<string | null>(null);
+  const [loadingExample, setLoadingExample] = useState(false);
+
+  // Highlight framework terms with clickable components
+  const highlightFrameworks = (text: string) => {
+    const frameworks = [
+      "HEART", "5 Whys", "CIRCLES", "RICE", "Impact/Effort",
+      "NPS", "DAU/MAU", "activation", "retention", "cohort",
+      "funnel", "A/B test", "MVP", "product-market fit",
+      "user segmentation", "churn"
+    ];
+
+    let result = text;
+    frameworks.forEach(term => {
+      const regex = new RegExp(`\\b${term}\\b`, 'gi');
+      result = result.replace(regex, `<framework>${term}</framework>`);
+    });
+
+    return result.split('<framework>').map((part, i) => {
+      if (i === 0) return part;
+      const [term, ...rest] = part.split('</framework>');
+      return (
+        <span key={i}>
+          <FrameworkTerm term={term} />
+          {rest.join('')}
+        </span>
+      );
+    });
+  };
 
   // Handle case where page is accessed directly without state
   if (!state?.feedback) {
@@ -35,6 +69,46 @@ const Feedback = () => {
   }
 
   const { feedback, question } = state;
+
+  const handleGenerateExample = async () => {
+    setLoadingExample(true);
+    try {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/evaluate-answer?type=example`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            question: question.text,
+            answer: '', // Not needed for example generation
+            category: question.category,
+            difficulty: question.difficulty,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate example');
+      }
+
+      const data = await response.json();
+      setExampleAnswer(data.exampleAnswer);
+      setShowExample(true);
+      toast.success('Example answer generated!');
+    } catch (error) {
+      console.error('Error generating example:', error);
+      toast.error('Failed to generate example answer. Please try again.');
+    } finally {
+      setLoadingExample(false);
+    }
+  };
 
   const handleNextQuestion = () => {
     navigate('/practice');
@@ -69,7 +143,9 @@ const Feedback = () => {
               {feedback.strengths.map((strength, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm">
                   <Check className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">{strength}</span>
+                  <span className="text-muted-foreground">
+                    {highlightFrameworks(strength)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -84,7 +160,9 @@ const Feedback = () => {
               {feedback.weaknesses.map((weakness, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm">
                   <X className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">{weakness}</span>
+                  <span className="text-muted-foreground">
+                    {highlightFrameworks(weakness)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -97,7 +175,7 @@ const Feedback = () => {
             Detailed Feedback
           </h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            {feedback.detailedFeedback}
+            {highlightFrameworks(feedback.detailedFeedback)}
           </p>
         </section>
 
@@ -120,8 +198,69 @@ const Feedback = () => {
           </div>
         </section>
 
+        {/* Example Answer Section */}
+        <section className="bg-card border border-border p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                Example 9/10 Answer
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                See how a Senior PM at Google would answer this
+              </p>
+            </div>
+            {!showExample && (
+              <Button
+                onClick={handleGenerateExample}
+                disabled={loadingExample}
+                size="sm"
+                variant="outline"
+                className="gap-2"
+              >
+                {loadingExample ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Show Example
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+
+          {showExample && exampleAnswer && (
+            <div className="space-y-3">
+              <div className="bg-secondary/30 border border-border rounded-md p-4">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {highlightFrameworks(exampleAnswer)}
+                </p>
+              </div>
+              <Button
+                onClick={() => setShowExample(false)}
+                size="sm"
+                variant="ghost"
+                className="gap-2"
+              >
+                <ChevronUp className="w-4 h-4" />
+                Hide Example
+              </Button>
+            </div>
+          )}
+        </section>
+
+        {/* Learning Tip */}
+        <section className="bg-secondary/20 border border-border p-5">
+          <p className="text-sm text-muted-foreground">
+            💡 <strong className="text-foreground">Tip:</strong> Click any underlined PM term above (like HEART, RICE, or NPS) to learn what it means!
+          </p>
+        </section>
+
         {/* Action Buttons */}
-        <section className="flex gap-3">
+        <section className="flex gap-3 pb-6">
           <Button variant="default" size="sm" onClick={handleNextQuestion}>
             Next Question
           </Button>
