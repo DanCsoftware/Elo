@@ -12,9 +12,9 @@ export interface FeedbackResult {
 }
 
 // Use Lovable Cloud's Supabase for Edge Functions
-const LOVABLE_CLOUD_URL = 'https://amalmykklpugtdeghooq.supabase.co'
-const LOVABLE_CLOUD_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtYWxteWtrbHB1Z3RkZWdob29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkxMzkxMDUsImV4cCI6MjA4NDcxNTEwNX0.5goe3_ZQvtpUg2fgLPpswmZ0FhtcgCb_wboNv3-O1OU'
-const EDGE_FUNCTION_URL = `${LOVABLE_CLOUD_URL}/functions/v1/evaluate-answer`
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/evaluate-answer`
 
 export async function evaluateAnswer(
   question: string,
@@ -29,7 +29,7 @@ export async function evaluateAnswer(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${LOVABLE_CLOUD_ANON_KEY}`,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
       },
       body: JSON.stringify({
         question,

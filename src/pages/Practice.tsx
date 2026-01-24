@@ -1,3 +1,4 @@
+import { useAuth } from '@/contexts/AuthContext';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -17,6 +18,7 @@ const Practice = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const fetchRandomQuestion = async () => {
     setLoading(true);
@@ -69,24 +71,31 @@ const Practice = () => {
         question.difficulty
       );
 
-      // Save to user_sessions table in external Supabase
-      const { error: saveError } = await supabase
-        .from('user_sessions')
-        .insert({
-          question_id: question.id,
-          answer_text: answer,
-          score: feedback.score,
-          strengths: feedback.strengths,
-          weaknesses: feedback.weaknesses,
-          detailed_feedback: feedback.detailedFeedback,
-          category_scores: feedback.categoryScores,
-        });
+// Only save if user is logged in
+if (user) {
+  const { error: saveError } = await supabase
+    .from('user_sessions')
+    .insert({
+      user_id: user.id,  // 🆕 ADD THIS
+      question_id: question.id,
+      answer_text: answer,
+      score: feedback.score,
+      strengths: feedback.strengths,
+      weaknesses: feedback.weaknesses,
+      detailed_feedback: feedback.detailedFeedback,
+      category_scores: feedback.categoryScores,
+      category: question.category,  // 🆕 ADD THIS (helpful for stats)
+      difficulty: question.difficulty,  // 🆕 ADD THIS (helpful for stats)
+      created_at: new Date().toISOString(),  // 🆕 ADD THIS
+    });
 
-      if (saveError) {
-        console.error('Error saving session:', saveError);
-        toast.error('Failed to save session, but showing feedback.');
-      }
-
+  if (saveError) {
+    console.error('Error saving session:', saveError);
+    toast.error('Failed to save session, but showing feedback.');
+  } else {
+    console.log('✅ Session saved successfully!');
+  }
+}
       // Navigate to feedback page with data
       navigate('/feedback', {
         state: {

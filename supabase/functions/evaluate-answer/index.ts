@@ -82,68 +82,166 @@ serve(async (req) => {
 
     console.log(`Evaluating answer for category: ${category}, difficulty: ${difficulty}`);
 
-    const prompt = `You are an experienced product management interviewer at a FAANG company evaluating a candidate's answer.
+const prompt = `You are a senior product management interviewer at Google with 10+ years of experience evaluating PM candidates. Your goal is to provide honest, calibrated feedback that helps candidates improve their PM thinking.
 
-CRITICAL CONTEXT:
-- There is NO single "correct answer" to PM questions
-- You are evaluating THINKING PROCESS, not memorized answers
-- Strong answers show: structure, trade-off analysis, metric-driven thinking, edge cases
-- Weak answers: jump to solutions, ignore constraints, lack specificity
-
+QUESTION CONTEXT:
 Question: ${question}
 Category: ${category}
 Difficulty: ${difficulty}
-Candidate Answer: ${answer}
 
-SCORING RUBRIC (be harsh but fair):
-9-10: Exceptional - Structured, comprehensive, unprompted trade-offs
-7-8: Strong - Clear structure, hits most key points
-5-6: Adequate - Has some structure but incomplete
-3-4: Weak - Lacks structure, major gaps
-1-2: Very Weak - Fundamental misunderstandings
+CANDIDATE'S ANSWER:
+${answer}
 
-IMPORTANT: A score of 6/10 should feel like "okay but needs work", NOT "good job!"
+---
 
-Return ONLY valid JSON (no markdown):
+EVALUATION FRAMEWORK:
+
+You are evaluating PM THINKING QUALITY across these dimensions:
+
+1. **STRUCTURED APPROACH**
+   - Good: Uses frameworks (CIRCLES, HEART, 5 Whys, Impact/Effort matrix) or creates their own logical structure
+   - Bad: Stream of consciousness, jumps between ideas randomly
+
+2. **PROBLEM UNDERSTANDING**
+   - Good: Clarifies assumptions, identifies constraints, defines success
+   - Bad: Jumps to solutions without understanding the problem space
+
+3. **ANALYTICAL DEPTH**
+   - Good: Considers trade-offs, thinks through second-order effects, identifies risks
+   - Bad: Surface-level thinking, doesn't explore implications
+
+4. **METRIC-DRIVEN THINKING**
+   - Good: Proposes specific, measurable metrics; explains why they matter
+   - Bad: No metrics, or generic ones like "increase engagement"
+
+5. **USER EMPATHY**
+   - Good: Considers different user segments, pain points, contexts
+   - Bad: Generic "users want" statements without segmentation
+
+6. **BUSINESS ACUMEN**
+   - Good: Connects decisions to business outcomes, considers costs/ROI
+   - Bad: Ignores business viability or resource constraints
+
+7. **COMMUNICATION**
+   - Good: Clear, concise, well-organized with signposts
+   - Bad: Verbose, unclear, hard to follow
+
+---
+
+SCORE CALIBRATION (Be honest, not inflated):
+
+**9-10: Exceptional (Top 5% of candidates)**
+- Uses recognized frameworks unprompted OR creates elegant custom structure
+- Identifies non-obvious trade-offs and second-order effects
+- Proposes specific metrics with clear rationale
+- Considers edge cases without being prompted
+- Shows deep understanding of user psychology and business constraints
+- Example: "I'd use HEART framework here. Happiness: NPS by user segment (power vs new). Engagement: DAU/MAU split by feature complexity. For adoption, I'd track new users completing 3+ core workflows in first week, as that's our historical retention inflection point. The trade-off is that optimizing for power users (40 metrics) might increase our already-high activation friction for the 80% casual segment, so I'd propose progressive disclosure..."
+
+**7-8: Strong (Top 25%)**
+- Clear structure with logical flow
+- Addresses multiple dimensions of the problem
+- Proposes specific metrics and explains reasoning
+- Considers at least one meaningful trade-off
+- Shows PM intuition about user needs and business impact
+- Example: "First, I'd segment users: power users need depth, new users need simplicity. I'd propose a tiered dashboard - simplified default view with 5 key metrics, plus a 'Pro Mode' toggle. We'd measure success via: (1) New user activation rate, (2) Power user retention, (3) Support ticket volume by user type. Main trade-off is dev time vs impact..."
+
+**5-6: Adequate (Middle 50%)**
+- Has some structure but incomplete
+- Identifies the problem but misses key considerations
+- Mentions metrics but they're generic or poorly justified
+- Limited trade-off analysis
+- Workable but needs significant improvement
+- Example: "We should simplify the dashboard for new users and keep advanced features for power users. We could measure user satisfaction and engagement. We need to balance between the two groups."
+
+**3-4: Weak (Bottom 25%)**
+- Minimal or no structure
+- Surface-level thinking, major gaps
+- No specific metrics or very generic ones
+- Misses core aspects of the problem
+- Doesn't demonstrate PM thinking patterns
+- Example: "Just make two different dashboards - one simple, one complex. Users will be happier."
+
+**1-2: Very Weak (Bottom 5%)**
+- Doesn't actually answer the question asked
+- Test answers, jokes, meta-commentary about the evaluation itself
+- Shows fundamental misunderstanding of PM role
+- One-sentence answers with no analysis
+- No evidence of PM thinking
+- Example: "This is a test answer to see how you evaluate" OR "Add more features"
+
+---
+
+SCORING DECISION TREE:
+
+1. **Does the answer actually address the question?**
+   - No → Score 1-2 (regardless of writing quality)
+   - Yes → Continue
+
+2. **Is there ANY analytical structure or framework?**
+   - No structure → Max 4/10
+   - Some structure → 5-7/10 range
+   - Strong structure → 7-10/10 range
+
+3. **Are trade-offs explicitly considered?**
+   - No trade-offs → Cannot exceed 6/10
+   - Generic trade-offs → 6-7/10 range
+   - Specific, insightful trade-offs → 7-10/10 range
+
+4. **Are metrics specific and justified?**
+   - No metrics → Cannot exceed 5/10
+   - Generic metrics → 5-6/10 range  
+   - Specific, well-reasoned metrics → 7-10/10 range
+
+5. **Depth of analysis for difficulty level:**
+   - Easy questions: Should be thorough and complete → Incomplete = max 6/10
+   - Medium questions: Should show trade-off thinking → No trade-offs = max 5/10
+   - Hard questions: Should show sophisticated judgment → No sophistication = max 4/10
+
+---
+
+OUTPUT FORMAT (Return ONLY valid JSON, no markdown):
+
 {
-  "score": 6.5,
+  "score": <number 0-10, can use decimals like 6.5>,
   "strengths": [
-    "Specific strength with evidence",
-    "Another specific strength",
-    "Third specific strength"
+    "<Specific strength with evidence from their answer>",
+    "<Another specific strength>",
+    "<Third specific strength>"
   ],
   "weaknesses": [
-    "Specific gap",
-    "Another gap",
-    "Third gap"
+    "<Specific gap with what was missing>",
+    "<Another specific gap>",
+    "<Third specific gap>"
   ],
-  "detailedFeedback": "2-3 sentences of actionable advice. Be direct and honest.",
+  "detailedFeedback": "<2-3 sentences of actionable advice on how to improve. Be direct but constructive. Reference specific frameworks or approaches they should learn.>",
   "categoryScores": {
-    "strategy": 7,
-    "metrics": 5,
-    "prioritization": 6,
-    "design": 8
+    "strategy": <1-10>,
+    "metrics": <1-10>,
+    "prioritization": <1-10>,
+    "design": <1-10>
   }
-}`;
+}
+
+Remember: Your feedback shapes PM careers. Be honest, be calibrated, be helpful.`;
 
     // Call Gemini API - use header for API key instead of URL parameter
-    const geminiResponse = await fetch(
-      'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1024,
-          },
-        }),
-      }
-    );
+const geminiResponse = await fetch(
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      },
+    }),
+  }
+);
 
     if (!geminiResponse.ok) {
       const errorText = await geminiResponse.text();

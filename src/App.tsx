@@ -8,23 +8,26 @@ import Practice from "./pages/Practice";
 import Feedback from "./pages/Feedback";
 import History from "./pages/History";
 import NotFound from "./pages/NotFound";
+import { AuthProvider } from '@/contexts/AuthContext';
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/practice" element={<Practice />} />
-          <Route path="/feedback" element={<Feedback />} />
-          <Route path="/history" element={<History />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/practice" element={<Practice />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/history" element={<History />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
