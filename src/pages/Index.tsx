@@ -5,11 +5,13 @@ import SkillBar from '@/components/SkillBar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserStats } from '@/hooks/useUserStats';
+import { useGrowthAnalysis } from '@/hooks/useGrowthAnalysis';
 import { Loader2 } from 'lucide-react';
 
 const Index = () => {
   const { user, signInWithGoogle } = useAuth();
   const { stats, loading } = useUserStats();
+  const { growthAreas, loading: growthLoading } = useGrowthAnalysis();
 
   // Show sign-in prompt if not authenticated
   if (!user) {
@@ -86,6 +88,52 @@ const Index = () => {
             </div>
           </div>
         </section>
+
+
+        {/* 🆕 REDESIGNED: Growth Insights - Compact Version */}
+{!growthLoading && growthAreas.length > 0 && stats && stats.totalSolved >= 3 && (
+  <section className="bg-card border border-border p-5 space-y-3">
+    <div className="flex items-center justify-between">
+      <h2 className="text-sm font-semibold uppercase tracking-wide">
+        Focus Areas
+      </h2>
+      <span className="text-xs text-muted-foreground">
+        Based on {stats.totalSolved} sessions
+      </span>
+    </div>
+
+    <div className="grid md:grid-cols-3 gap-3">
+      {growthAreas.slice(0, 3).map(area => (
+        <div 
+          key={area.area}
+          className={`border rounded-md p-3 ${
+            area.severity === 'critical' ? 'border-destructive/30 bg-destructive/5' :
+            area.severity === 'improving' ? 'border-warning/30 bg-warning/5' :
+            'border-success/30 bg-success/5'
+          }`}
+        >
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold">
+                {area.area}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {area.severity === 'critical' && '🔴 Needs focus'}
+                {area.severity === 'improving' && '🟡 Improving'}
+                {area.recentTrend === 'up' && ' • 📈'}
+                {area.recentTrend === 'down' && ' • 📉'}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {area.recommendations[0]}
+          </p>
+        </div>
+      ))}
+    </div>
+  </section>
+)}
 
         {/* Category Performance */}
         <section className="bg-card border border-border p-5 space-y-4">

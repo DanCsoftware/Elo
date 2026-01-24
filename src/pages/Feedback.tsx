@@ -7,6 +7,7 @@ import { FeedbackResult } from '@/lib/gemini';
 import { Question } from '@/lib/supabase';
 import { FrameworkTerm } from '@/components/FrameworkTerm';
 import { toast } from 'sonner';
+import { CompanySelector } from '@/components/CompanySelector';
 
 interface LocationState {
   feedback: FeedbackResult;
@@ -28,6 +29,10 @@ const Feedback = () => {
   const [showExample, setShowExample] = useState(false);
   const [exampleAnswer, setExampleAnswer] = useState<string | null>(null);
   const [loadingExample, setLoadingExample] = useState(false);
+  
+  // 🆕 NEW: Company selection state
+  const [selectedCompany, setSelectedCompany] = useState('google');
+  const [companySelectorExpanded, setCompanySelectorExpanded] = useState(false);
 
   // Highlight framework terms with clickable components
   const highlightFrameworks = (text: string) => {
@@ -76,8 +81,9 @@ const Feedback = () => {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
       const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
+      // 🆕 UPDATED: Add company parameter to URL
       const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/evaluate-answer?type=example`,
+        `${SUPABASE_URL}/functions/v1/evaluate-answer?type=example&company=${selectedCompany}`,
         {
           method: 'POST',
           headers: {
@@ -86,7 +92,7 @@ const Feedback = () => {
           },
           body: JSON.stringify({
             question: question.text,
-            answer: '', // Not needed for example generation
+            answer: '',
             category: question.category,
             difficulty: question.difficulty,
           }),
@@ -206,7 +212,7 @@ const Feedback = () => {
                 Example 9/10 Answer
               </h3>
               <p className="text-xs text-muted-foreground mt-1">
-                See how a Senior PM at Google would answer this
+                See how a senior PM would answer this
               </p>
             </div>
             {!showExample && (
@@ -232,6 +238,17 @@ const Feedback = () => {
             )}
           </div>
 
+          {/* 🆕 NEW: Company Selector (only show before example is generated) */}
+          {!showExample && (
+            <CompanySelector
+              selected={selectedCompany}
+              onSelect={setSelectedCompany}
+              expanded={companySelectorExpanded}
+              onToggle={() => setCompanySelectorExpanded(!companySelectorExpanded)}
+            />
+          )}
+
+          {/* Example Answer Display */}
           {showExample && exampleAnswer && (
             <div className="space-y-3">
               <div className="bg-secondary/30 border border-border rounded-md p-4">
