@@ -8,6 +8,13 @@ interface GrowthArea {
   severity: 'critical' | 'improving' | 'strength';
   recentTrend: 'up' | 'down' | 'stable';
   recommendations: string[];
+  examples: {
+    questionId: string;
+    questionText: string;
+    whatYouSaid: string;
+    whatWasMissing: string;
+    score: number;
+  }[];
 }
 
 export function useGrowthAnalysis() {
@@ -38,7 +45,6 @@ export function useGrowthAnalysis() {
           return;
         }
 
-        // Analyze based on category scores (works with both old and new format)
         const categoryAnalysis = analyzeCategoryScores(sessions);
         console.log('📊 Growth areas found:', categoryAnalysis);
         
@@ -58,6 +64,7 @@ export function useGrowthAnalysis() {
 
 function analyzeCategoryScores(sessions: any[]): GrowthArea[] {
   const categoryData: { [key: string]: number[] } = {};
+  const categorySessionMap: { [key: string]: any[] } = {};
   
   sessions.forEach(session => {
     // Handle both old format (category_scores column) and new format (feedback.categoryScores)
@@ -66,8 +73,12 @@ function analyzeCategoryScores(sessions: any[]): GrowthArea[] {
     if (!categoryScores) return;
     
     Object.entries(categoryScores).forEach(([category, score]) => {
-      if (!categoryData[category]) categoryData[category] = [];
+      if (!categoryData[category]) {
+        categoryData[category] = [];
+        categorySessionMap[category] = [];
+      }
       categoryData[category].push(score as number);
+      categorySessionMap[category].push(session);
     });
   });
 
@@ -92,12 +103,16 @@ function analyzeCategoryScores(sessions: any[]): GrowthArea[] {
       // Frequency = how often this is a weak area (inverted from score)
       const frequency = Math.round((10 - avg) * 10);
 
+      // 🆕 NEW: Get examples of where they struggled in this category
+      const examples = getExamplesForCategory(category, categorySessionMap[category] || []);
+
       return {
         area: formatCategoryName(category),
         frequency: Math.max(0, Math.min(100, frequency)),
         severity,
         recentTrend,
         recommendations: getCategoryRecommendations(category),
+        examples, // 🆕 ADD THIS
       };
     })
     .filter(area => area.severity !== 'strength') // Only show areas needing work
@@ -107,6 +122,41 @@ function analyzeCategoryScores(sessions: any[]): GrowthArea[] {
       if (b.severity === 'critical' && a.severity !== 'critical') return 1;
       return b.frequency - a.frequency;
     });
+}
+
+// 🆕 NEW: Function to extract concrete examples
+function getExamplesForCategory(category: string, sessions: any[]): any[] {
+  // Sort by score (lowest first) and take the worst 5
+  const sortedSessions = [...sessions]
+    .filter(s => s.score && s.score < 7) // Only include sessions where they struggled
+    .sort((a, b) => (a.score || 0) - (b.score || 0))
+    .slice(0, 5);
+
+  return sortedSessions.map(session => {
+    const weaknesses = session.feedback?.weaknesses || [];
+    const answer = session.answer || '';
+    
+    // Find the most relevant weakness for this category
+    const categoryKeywords: { [key: string]: string[] } = {
+      'strategy': ['strateg', 'market', 'competit', 'vision'],
+      'metrics': ['metric', 'measure', 'KPI', 'quantif'],
+      'prioritization': ['priorit', 'trade-off', 'RICE', 'impact'],
+      'design': ['user', 'design', 'UX', 'experience'],
+    };
+
+    const keywords = categoryKeywords[category] || [];
+    const relevantWeakness = weaknesses.find((w: string) => 
+      keywords.some(kw => w.toLowerCase().includes(kw))
+    ) || weaknesses[0] || 'Missing key elements';
+
+    return {
+      questionId: session.id,
+      questionText: session.question_text || 'Question not available',
+      whatYouSaid: answer.substring(0, 150) + (answer.length > 150 ? '...' : ''),
+      whatWasMissing: relevantWeakness,
+      score: session.score || 0,
+    };
+  });
 }
 
 function formatCategoryName(key: string): string {
