@@ -138,6 +138,51 @@ const Feedback = () => {
           <span className="text-muted-foreground font-mono text-lg">/10</span>
         </section>
 
+{/* Score Section */}
+        <section className="bg-card border border-border p-6 flex flex-col items-center">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Your Score</p>
+          <span className={`text-5xl font-mono font-bold ${getScoreColor(feedback.score)}`}>
+            {feedback.score.toFixed(1)}
+          </span>
+          <span className="text-muted-foreground font-mono text-lg">/10</span>
+        </section>
+
+        {/* 🆕 NEW: ELO Change Display */}
+        {feedback?.eloChange !== undefined && feedback?.newEloRating && (
+          <section className="bg-card border border-border p-5">
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">
+              Rating Update
+            </h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Change</p>
+                <p className={`text-3xl font-bold ${
+                  feedback.eloChange > 0 ? 'text-success' : 
+                  feedback.eloChange < 0 ? 'text-destructive' : 
+                  'text-muted-foreground'
+                }`}>
+                  {feedback.eloChange > 0 && '+'}{feedback.eloChange}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground mb-1">New Rating</p>
+                <p className="text-3xl font-bold text-primary">
+                  {feedback.newEloRating}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {feedback.newEloRating < 1000 && 'Entry Level PM'}
+                  {feedback.newEloRating >= 1000 && feedback.newEloRating < 1200 && 'Associate PM'}
+                  {feedback.newEloRating >= 1200 && feedback.newEloRating < 1400 && 'PM'}
+                  {feedback.newEloRating >= 1400 && feedback.newEloRating < 1600 && 'Senior PM'}
+                  {feedback.newEloRating >= 1600 && feedback.newEloRating < 1800 && 'Staff PM'}
+                  {feedback.newEloRating >= 1800 && feedback.newEloRating < 2000 && 'Principal PM'}
+                  {feedback.newEloRating >= 2000 && 'Legendary PM'}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Feedback Cards - Two Column */}
         <section className="grid md:grid-cols-2 gap-6">
           {/* What You Did Well */}

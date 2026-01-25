@@ -1,0 +1,754 @@
+[
+  {
+    "id": "821346d6-11e5-44ba-98c9-7e13565a2f4f",
+    "skills": ["metrics_definition", "user_empathy"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "84646b02-92f6-46ae-ab50-630fb1dd71e6",
+    "skills": ["metrics_definition", "problem_framing"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "ea801e66-36d5-4cf6-8766-df2b9e7b786a",
+    "skills": ["metrics_definition", "user_empathy"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "ebc3e2cd-b7b0-4029-adfd-98464e7f12af",
+    "skills": ["metrics_definition", "user_empathy"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "0e22025c-f514-4204-b9d7-ac619c696527",
+    "skills": ["metrics_definition", "problem_framing"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "dbd2fb2a-f934-42ec-b961-bf4ab95bde22",
+    "skills": ["metrics_definition", "problem_framing"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "dbf40cdc-b4cd-4837-89b3-f17bff45c699",
+    "skills": ["metrics_definition", "problem_framing", "risk_assessment"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "1a8bfe6e-6639-4669-a759-8658d4731e92",
+    "skills": ["prioritization", "user_empathy", "strategic_thinking"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "c535d5e5-60e8-4590-a854-63e28ba6ddd7",
+    "skills": ["prioritization", "tradeoff_analysis"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "680362fd-286e-4bf6-b279-3efe7b871537",
+    "skills": ["problem_framing", "user_empathy"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "b48aa97d-0c3f-443e-9514-e71e1e0098ed",
+    "skills": ["problem_framing", "user_empathy"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "b8f53617-7669-4a0b-9e95-520ae0064ddb",
+    "skills": ["problem_framing", "risk_assessment"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "efc21d70-3eed-44d0-91e2-7929c743b9cf",
+    "skills": ["user_empathy", "communication"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "af81f75a-d56c-4211-a68b-54e3444d7996",
+    "skills": ["user_empathy", "problem_framing"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "2e5d96ed-153c-4f06-a7b3-8a53c456f1e5",
+    "skills": ["user_empathy", "communication", "risk_assessment"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "6b5b0682-cd36-44f0-81ca-c46b500af68a",
+    "skills": ["problem_framing", "stakeholder_mgmt"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "9ff22108-d884-4ac3-b0aa-623348faee2b",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "stakeholder_mgmt"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "6b26e5c4-d28f-40dc-91b9-b6e0c22979db",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "market_sense"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "8bc741d5-f167-45ed-96c9-971791cdfc55",
+    "skills": ["strategic_thinking", "metrics_definition"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "40e9aa01-d41f-4e2e-9327-617480c35545",
+    "skills": ["strategic_thinking", "tradeoff_analysis"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "31669d27-b9af-4bfd-984c-94b4aeeaa65a",
+    "skills": ["communication", "risk_assessment"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "b2ffd37a-545d-4c46-acd8-4e1367f7149b",
+    "skills": ["communication", "strategic_thinking"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "b7bfc20a-b719-4b50-94b4-abf1bf615f17",
+    "skills": ["communication", "technical_judgment"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "b261821c-41f1-4213-8f3b-2aad807ff688",
+    "skills": ["communication", "risk_assessment"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "fa9158a0-1671-4969-89d8-b30874bf7c36",
+    "skills": ["strategic_thinking", "problem_framing"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "fcc87753-f7c7-4a91-8955-04084099cb83",
+    "skills": ["strategic_thinking", "market_sense"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "d5b9e04a-e2cd-4bb0-9acc-c96af9f05e7d",
+    "skills": ["prioritization", "tradeoff_analysis"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "8eac9f69-e9ea-4eab-8238-a71c1ede14cd",
+    "skills": ["prioritization", "metrics_definition"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "b67131e1-6934-419f-bc32-a8fb9df49cc1",
+    "skills": ["prioritization", "stakeholder_mgmt"],
+    "elo_difficulty": 1100
+  },
+  {
+    "id": "92f42a60-bb81-442d-bb46-0da7a9fdcca8",
+    "skills": ["prioritization", "tradeoff_analysis", "risk_assessment"],
+    "elo_difficulty": 1150
+  },
+  {
+    "id": "eca19268-3f58-4b3f-a51c-afece1851fcc",
+    "skills": ["prioritization", "risk_assessment"],
+    "elo_difficulty": 1100
+  },
+
+  {
+    "id": "21b16d11-c6a6-42df-8d04-d6dadcc89882",
+    "skills": ["strategic_thinking", "metrics_definition", "tradeoff_analysis"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "cca43757-50c2-4257-9d00-99c51250f730",
+    "skills": ["metrics_definition", "problem_framing"],
+    "elo_difficulty": 1300
+  },
+  {
+    "id": "a068dfa0-af70-4a3f-ba22-0a0bdda641dc",
+    "skills": ["user_empathy", "problem_framing", "communication"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "b7d28d56-c1d4-47d8-8b06-f670aaf3377f",
+    "skills": ["prioritization", "tradeoff_analysis", "risk_assessment"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "06ecdf6e-8400-4804-b6cd-dc48085bb674",
+    "skills": ["strategic_thinking", "market_sense", "risk_assessment"],
+    "elo_difficulty": 1400
+  },
+  {
+    "id": "16fa8ef4-0874-4afd-8821-bf6ea0e82f0b",
+    "skills": ["prioritization", "tradeoff_analysis", "technical_judgment"],
+    "elo_difficulty": 1400
+  },
+  {
+    "id": "693187cb-6c8c-4c3f-b0c8-9af0fdff03bb",
+    "skills": ["prioritization", "strategic_thinking", "tradeoff_analysis"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "2032be8e-8166-483c-9649-13134f41eb9a",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "stakeholder_mgmt"],
+    "elo_difficulty": 1400
+  },
+  {
+    "id": "5f3dd14b-106e-4a61-947e-9b547aa46c08",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "prioritization"],
+    "elo_difficulty": 1400
+  },
+  {
+    "id": "3a3e306b-7046-46fc-9046-4b317251ac94",
+    "skills": ["strategic_thinking", "market_sense", "metrics_definition"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "35acdcbe-ed37-489c-8410-bda1632fdcb9",
+    "skills": ["metrics_definition", "stakeholder_mgmt", "problem_framing"],
+    "elo_difficulty": 1400
+  },
+  {
+    "id": "4e5d91e2-8bae-45df-919b-f1ddb7259cb6",
+    "skills": ["metrics_definition", "problem_framing", "stakeholder_mgmt"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "514d78bd-267c-4554-864a-ef3a4b93ec73",
+    "skills": ["metrics_definition", "problem_framing"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "3abee46c-b7cf-4b1b-8a12-87b4f65784e9",
+    "skills": ["metrics_definition", "problem_framing", "user_empathy"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "c994a401-0231-4d08-b760-4f358a81e2b8",
+    "skills": ["metrics_definition", "problem_framing", "user_empathy"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "d92d3465-a219-4188-b13d-8443f972ec9e",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "market_sense"],
+    "elo_difficulty": 1400
+  },
+  {
+    "id": "e1c7ff45-8d3e-413e-afaf-ba0a6d0231ef",
+    "skills": ["prioritization", "strategic_thinking", "metrics_definition"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "a8ccd0bc-2ab7-417f-9fa6-db101e9bee63",
+    "skills": ["prioritization", "strategic_thinking", "market_sense"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "54e2c7c7-2ac4-494a-8aff-c8a736579566",
+    "skills": ["user_empathy", "problem_framing", "communication"],
+    "elo_difficulty": 1300
+  },
+  {
+    "id": "1d389c41-314c-44de-bd26-3b90474d9198",
+    "skills": ["user_empathy", "communication", "risk_assessment"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "c4872dc5-4a0e-4708-86ec-396b1bae1df8",
+    "skills": ["user_empathy", "strategic_thinking", "risk_assessment"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "7917c4e7-7b33-4bfa-aece-2653806f30b5",
+    "skills": ["user_empathy", "problem_framing"],
+    "elo_difficulty": 1300
+  },
+  {
+    "id": "c9e70231-1db9-48c0-959e-7b894bba5e95",
+    "skills": ["user_empathy", "problem_framing"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "fe7e3474-228b-422a-8712-ab8618dad3e0",
+    "skills": ["user_empathy", "problem_framing", "communication"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "5e3bc1d1-3e24-4cf5-afa2-b71da7bf3072",
+    "skills": ["prioritization", "risk_assessment", "technical_judgment"],
+    "elo_difficulty": 1400
+  },
+  {
+    "id": "94b62e4a-c1e4-41c5-b7b8-c93b0fc581a2",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "user_empathy"],
+    "elo_difficulty": 1400
+  },
+  {
+    "id": "e22f96ea-3336-4681-9302-bf0c4fba2f0a",
+    "skills": ["problem_framing", "communication", "ambiguity_navigation"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "c82dbdfc-5fc2-47ec-93cc-64bf41c898fd",
+    "skills": ["strategic_thinking", "problem_framing"],
+    "elo_difficulty": 1400
+  },
+  {
+    "id": "2dfcbbdd-8cc2-4edd-9c10-fbfacad89b25",
+    "skills": ["metrics_definition", "problem_framing", "communication"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "707e15f0-1792-41c3-a814-61c17d8d0cfd",
+    "skills": ["communication", "stakeholder_mgmt", "strategic_thinking"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "5b4e36bb-3863-4814-a4da-be90fa24cba8",
+    "skills": ["prioritization", "strategic_thinking", "risk_assessment"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "0d52a257-f5c8-43dd-a786-43f8fb09df7d",
+    "skills": ["communication", "stakeholder_mgmt", "problem_framing"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "22c8f783-6ba1-4eb5-aff3-570d29f22475",
+    "skills": ["ambiguity_navigation", "problem_framing"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "4684644f-9047-4519-b858-0966b3094887",
+    "skills": ["risk_assessment", "technical_judgment", "systems_thinking"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "9c521cfb-f7cb-4dd6-9718-d51015b739a8",
+    "skills": ["communication", "stakeholder_mgmt", "risk_assessment"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "2369fe61-e30a-4eed-9e86-cb2e1d2941ff",
+    "skills": ["strategic_thinking", "systems_thinking", "risk_assessment"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "1ae1aa72-1257-4e91-9a79-d57cefaf75da",
+    "skills": ["technical_judgment", "risk_assessment", "communication"],
+    "elo_difficulty": 1300
+  },
+  {
+    "id": "1844b127-0a58-4b56-8db3-498da79fcf09",
+    "skills": ["communication", "stakeholder_mgmt", "risk_assessment"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "2d4e3515-8c7d-48b1-b1af-c3e62baa4aec",
+    "skills": ["risk_assessment", "strategic_thinking"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "abcf4258-5199-47f9-9de3-f2c5f0efb246",
+    "skills": ["technical_judgment", "strategic_thinking", "prioritization"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "ec26f717-8055-4d92-ac17-7ed02878fd7a",
+    "skills": ["risk_assessment", "strategic_thinking", "tradeoff_analysis"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "3062b026-0d2b-4b0b-b5de-60140d6ed7ba",
+    "skills": ["communication", "problem_framing", "risk_assessment"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "5ab6752f-a3da-4751-9c33-57ba1ba0f99d",
+    "skills": ["communication", "problem_framing"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "75c2afa3-9678-4028-9f11-acc03d21fcdf",
+    "skills": ["communication", "stakeholder_mgmt", "strategic_thinking"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "7a24c839-8be4-4537-88bb-1e9f9c921625",
+    "skills": ["communication", "stakeholder_mgmt", "risk_assessment"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "6891e651-9d3b-4c87-a0fb-0bf045f0ce38",
+    "skills": ["user_empathy", "problem_framing", "metrics_definition"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "97064a8a-531a-42ab-8ab7-090c7c80e40e",
+    "skills": ["user_empathy", "strategic_thinking", "metrics_definition"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "5760ea6b-a787-48ef-9467-8508e32ab4bf",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "risk_assessment", "user_empathy"],
+    "elo_difficulty": 1500
+  },
+  {
+    "id": "f89dee99-62c6-47c9-b3bd-bc4946a32539",
+    "skills": ["ambiguity_navigation", "problem_framing", "communication"],
+    "elo_difficulty": 1400
+  },
+  {
+    "id": "a5763f13-7d30-4083-99da-1ff3a9cbc555",
+    "skills": ["strategic_thinking", "problem_framing"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "8aafb290-38bb-4d4a-9509-0cf1601deb41",
+    "skills": ["risk_assessment", "user_empathy", "technical_judgment"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "af58df58-3cef-4313-9756-df0e09e882c3",
+    "skills": ["market_sense", "strategic_thinking", "ambiguity_navigation"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "79eee9d5-5024-44f8-92b2-4b3a98f19f33",
+    "skills": ["user_empathy", "risk_assessment", "tradeoff_analysis"],
+    "elo_difficulty": 1500
+  },
+  {
+    "id": "ea7eebc6-df16-405a-992c-1549fca52728",
+    "skills": ["user_empathy", "communication", "problem_framing"],
+    "elo_difficulty": 1350
+  },
+  {
+    "id": "c09d302a-f940-4c65-905e-7cf7c0529a7e",
+    "skills": ["strategic_thinking", "market_sense", "tradeoff_analysis"],
+    "elo_difficulty": 1550
+  },
+
+  {
+    "id": "01a48fd1-18b9-401b-898b-1125d3472590",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "market_sense", "risk_assessment"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "1b479b4b-9a5b-40e1-aa0e-04f1f32f60c1",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "stakeholder_mgmt", "risk_assessment"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "5dde1c23-26f3-4206-9022-d5d59d8d7ce5",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "stakeholder_mgmt"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "6e64ed85-2100-49b8-9eb3-ca5e2f783e1c",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "risk_assessment"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "95aa36bd-c709-4c04-80bf-c2245e12292c",
+    "skills": ["strategic_thinking", "risk_assessment", "tradeoff_analysis"],
+    "elo_difficulty": 1750
+  },
+  {
+    "id": "a3fb70f3-797a-4686-a9a1-986e7b87d175",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "market_sense", "stakeholder_mgmt"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "c6ba3c52-de4a-4fa4-8eec-8f6aab384db8",
+    "skills": ["strategic_thinking", "market_sense", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "e3bf95a4-1b69-4b70-8b4f-e2d0e21468aa",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "metrics_definition"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "a2efee06-eefd-4ac4-9022-7c91c6285c05",
+    "skills": ["strategic_thinking", "stakeholder_mgmt", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "0ef9cacf-44b5-49a4-83fa-b33bf0af34af",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "stakeholder_mgmt", "risk_assessment"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "0b75933c-7672-495c-bfa4-d5034eaaa0ac",
+    "skills": ["strategic_thinking", "market_sense", "ambiguity_navigation"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "463bfa70-b31e-4b1e-9cf8-eb0096af62cd",
+    "skills": ["strategic_thinking", "market_sense", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "3fad7b5b-9cce-479b-86ca-38fe829d8816",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "stakeholder_mgmt", "risk_assessment"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "63bc6313-7c6e-4e82-ac62-3e10f9ab58bf",
+    "skills": ["strategic_thinking", "market_sense", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "4a48ae0b-f617-420c-8d44-799d65b76b26",
+    "skills": ["strategic_thinking", "risk_assessment", "stakeholder_mgmt"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "83699522-1b52-4996-b4bf-86e165fb8f84",
+    "skills": ["communication", "risk_assessment", "stakeholder_mgmt", "technical_judgment"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "96e03b45-a94f-46bd-b323-dfa76b8f368a",
+    "skills": ["metrics_definition", "problem_framing", "risk_assessment"],
+    "elo_difficulty": 1600
+  },
+  {
+    "id": "b02ff708-6768-4fdd-bc9b-c58b64612f54",
+    "skills": ["strategic_thinking", "metrics_definition", "tradeoff_analysis"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "b0affed9-2bdb-46f5-9377-dac896b04dd7",
+    "skills": ["strategic_thinking", "risk_assessment", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "fc3d8e14-dce9-4119-a0f8-28de3959081b",
+    "skills": ["strategic_thinking", "risk_assessment", "stakeholder_mgmt"],
+    "elo_difficulty": 1750
+  },
+  {
+    "id": "b738df54-b029-41f9-8a56-97b87d92373c",
+    "skills": ["strategic_thinking", "market_sense", "tradeoff_analysis"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "04645a78-1c0d-4e6d-b043-7f07bf0fb3fb",
+    "skills": ["prioritization", "strategic_thinking", "tradeoff_analysis", "metrics_definition"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "16789c15-7522-4c98-b3d3-f5405fa85edd",
+    "skills": ["prioritization", "strategic_thinking", "market_sense", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "42dd1f9b-9bb6-44aa-9fd9-34e1b2594163",
+    "skills": ["prioritization", "tradeoff_analysis", "metrics_definition", "stakeholder_mgmt"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "1635d1e2-c7f9-4a31-8684-d42ba963c6d9",
+    "skills": ["prioritization", "risk_assessment", "ambiguity_navigation", "stakeholder_mgmt"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "4cd496f6-042d-4093-ad96-e1ef223e13bf",
+    "skills": ["prioritization", "strategic_thinking", "market_sense", "risk_assessment"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "530f6387-5b1d-409b-b9d8-4a466692c983",
+    "skills": ["prioritization", "tradeoff_analysis", "stakeholder_mgmt", "strategic_thinking"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "399998bc-6b62-4468-a2fc-80b3037776dd",
+    "skills": ["prioritization", "risk_assessment", "technical_judgment", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "1f7fd3a6-d4c5-453a-a1cc-29467b805fd9",
+    "skills": ["prioritization", "tradeoff_analysis", "stakeholder_mgmt", "metrics_definition"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "81a44420-a9dc-472b-b65b-e43e89cb0d24",
+    "skills": ["prioritization", "strategic_thinking", "tradeoff_analysis", "market_sense"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "a2e73556-8d66-4f29-b70c-9708e15535d5",
+    "skills": ["prioritization", "strategic_thinking", "tradeoff_analysis", "stakeholder_mgmt"],
+    "elo_difficulty": 1600
+  },
+  {
+    "id": "a7902b2e-a406-4320-8266-d764719e82cd",
+    "skills": ["prioritization", "tradeoff_analysis", "user_empathy", "technical_judgment"],
+    "elo_difficulty": 1600
+  },
+  {
+    "id": "9c8ac285-fd00-494e-9a0b-216df55ec06e",
+    "skills": ["prioritization", "tradeoff_analysis", "technical_judgment", "stakeholder_mgmt"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "c71a9181-0aa7-4ba0-a634-5c0756ec55f0",
+    "skills": ["prioritization", "strategic_thinking", "market_sense", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "c98804fe-eccd-43dc-907c-58e2b08f8c43",
+    "skills": ["prioritization", "strategic_thinking", "tradeoff_analysis", "market_sense"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "9ad3fed0-3ba7-45cd-85a1-cfc0de5cba2a",
+    "skills": ["prioritization", "strategic_thinking", "stakeholder_mgmt", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "ccae83ad-7712-4d73-b9d4-0293ddc7e613",
+    "skills": ["prioritization", "strategic_thinking", "risk_assessment", "stakeholder_mgmt"],
+    "elo_difficulty": 1600
+  },
+  {
+    "id": "d822e469-2c31-4155-8d13-1b65396d2a47",
+    "skills": ["prioritization", "tradeoff_analysis", "user_empathy", "technical_judgment"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "0fce654f-8661-47d8-888e-4338238b45ac",
+    "skills": ["metrics_definition", "problem_framing", "user_empathy", "experimentation"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "539900fa-d8c2-4e8d-80cb-f8446a85f7df",
+    "skills": ["metrics_definition", "problem_framing", "stakeholder_mgmt"],
+    "elo_difficulty": 1600
+  },
+  {
+    "id": "1c557fad-d374-4c71-9038-5437f40d21b9",
+    "skills": ["metrics_definition", "problem_framing", "experimentation", "systems_thinking"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "44e78fa2-cfd3-47d3-adaa-eff2febef8d9",
+    "skills": ["metrics_definition", "problem_framing", "user_empathy"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "7bf03875-b19c-4991-8e8e-39b22ccbfc80",
+    "skills": ["metrics_definition", "strategic_thinking", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "71873aae-a7a1-41e0-867b-098a4fc1ba14",
+    "skills": ["metrics_definition", "problem_framing", "market_sense", "strategic_thinking"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "758379ce-44bc-47d1-8300-bf589e694b03",
+    "skills": ["metrics_definition", "problem_framing", "user_empathy"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "a8a172dd-5a0b-45e9-9e4d-310e8ba447a4",
+    "skills": ["metrics_definition", "strategic_thinking", "tradeoff_analysis", "stakeholder_mgmt"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "b637b2f6-38bf-470f-98a0-44960090f649",
+    "skills": ["metrics_definition", "strategic_thinking", "tradeoff_analysis"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "b32ec86b-fed2-461f-a582-47241df7b8d4",
+    "skills": ["metrics_definition", "problem_framing", "market_sense"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "cb5e125c-aeec-49ab-88ed-c763686e4b3c",
+    "skills": ["metrics_definition", "problem_framing", "user_empathy"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "e785f8e5-89e5-44fb-962e-09a86d3191cc",
+    "skills": ["metrics_definition", "problem_framing", "experimentation", "user_empathy"],
+    "elo_difficulty": 1600
+  },
+  {
+    "id": "dacf98a3-24db-4222-8398-056610909df5",
+    "skills": ["metrics_definition", "problem_framing", "market_sense"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "d588a9bc-5165-4e96-8754-0f12b03c3620",
+    "skills": ["metrics_definition", "problem_framing", "user_empathy", "tradeoff_analysis"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "cf0890f1-360d-4015-af08-184a52444b62",
+    "skills": ["metrics_definition", "problem_framing", "systems_thinking", "stakeholder_mgmt"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "0f5f3ac2-4233-4b42-81ab-601f9c8fb596",
+    "skills": ["user_empathy", "problem_framing", "strategic_thinking", "tradeoff_analysis"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "28aa0975-6bca-440e-9e48-e524c4dd9d7c",
+    "skills": ["user_empathy", "strategic_thinking", "tradeoff_analysis", "market_sense"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "2736d4c4-0d20-4399-b5f9-85f0c0fc703a",
+    "skills": ["risk_assessment", "tradeoff_analysis", "user_empathy"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "37b05697-11e8-4a52-94c3-bdbab582598e",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "user_empathy", "market_sense"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "32c00472-0ede-4195-b844-ac012aa32e51",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "market_sense", "prioritization"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "701d4675-4d6e-4abc-b612-fb9f6494be72",
+    "skills": ["user_empathy", "strategic_thinking", "tradeoff_analysis"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "83a0b083-2053-4bc5-b688-e29c9e98a3f3",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "market_sense"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "c1d1ffc0-2ca3-4848-a6d7-cc9676ee51f2",
+    "skills": ["strategic_thinking", "tradeoff_analysis", "user_empathy", "market_sense"],
+    "elo_difficulty": 1700
+  },
+  {
+    "id": "cd88ed1c-04e0-4335-94c1-173c0222b157",
+    "skills": ["risk_assessment", "tradeoff_analysis", "user_empathy", "experimentation"],
+    "elo_difficulty": 1600
+  },
+  {
+    "id": "d8a2b08e-18aa-4442-bf9b-cc6141040e51",
+    "skills": ["risk_assessment", "tradeoff_analysis", "user_empathy", "experimentation"],
+    "elo_difficulty": 1650
+  },
+  {
+    "id": "d3683ddd-b104-421c-a4a1-1f8b95b3ca75",
+    "skills": ["risk_assessment", "tradeoff_analysis", "technical_judgment", "market_sense"],
+    "elo_difficulty": 1700
+  }
+]

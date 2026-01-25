@@ -8,17 +8,20 @@ import HintSection from '@/components/HintSection';
 import { Button } from '@/components/ui/button';
 import { supabase, Question } from '@/lib/supabase';
 import { evaluateAnswer } from '@/lib/gemini';
+import { useUserStats } from '@/hooks/useUserStats'; // 🆕 ADD THIS
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Practice = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { stats } = useUserStats(); // 🆕 ADD THIS
+  
   const [question, setQuestion] = useState<Question | null>(null);
   const [answer, setAnswer] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
 
   const fetchRandomQuestion = async () => {
     setLoading(true);
@@ -35,10 +38,10 @@ const Practice = () => {
       // Get a random offset
       const randomOffset = Math.floor(Math.random() * count);
 
-      // Fetch one random question
+      // 🆕 UPDATED: Fetch with new fields
       const { data, error: fetchError } = await supabase
         .from('questions')
-        .select('*')
+        .select('id, text, category, difficulty, hint, skills, elo_difficulty')
         .range(randomOffset, randomOffset)
         .single();
 
@@ -63,39 +66,54 @@ const Practice = () => {
 
     setSubmitting(true);
     try {
-      // Evaluate the answer using Gemini AI
+      // 🆕 UPDATED: Pass ELO ratings to evaluation
       const feedback = await evaluateAnswer(
         question.text,
         answer,
         question.category,
-        question.difficulty
+        question.difficulty,
+        stats?.eloRating || 1200, // User's current rating
+        question.elo_difficulty || 1400 // Question difficulty
       );
 
-// Only save if user is logged in
-if (user) {
-  const { error: saveError } = await supabase
-    .from('user_sessions')
-    .insert({
-      user_id: user.id,  // 🆕 ADD THIS
-      question_id: question.id,
-      answer_text: answer,
-      score: feedback.score,
-      strengths: feedback.strengths,
-      weaknesses: feedback.weaknesses,
-      detailed_feedback: feedback.detailedFeedback,
-      category_scores: feedback.categoryScores,
-      category: question.category,  // 🆕 ADD THIS (helpful for stats)
-      difficulty: question.difficulty,  // 🆕 ADD THIS (helpful for stats)
-      created_at: new Date().toISOString(),  // 🆕 ADD THIS
-    });
+      // Only save if user is logged in
+      if (user) {
+        const { error: saveError } = await supabase
+          .from('user_sessions')
+          .insert({
+            user_id: user.id,
+            question_id: question.id,
+            answer_text: answer,
+            score: feedback.score,
+            strengths: feedback.strengths,
+            weaknesses: feedback.weaknesses,
+            detailed_feedback: feedback.detailedFeedback,
+            category_scores: feedback.categoryScores,
+            skill_scores: feedback.skillScores, // 🆕 ADD THIS
+            elo_before: stats?.eloRating || 1200, // 🆕 ADD THIS
+            elo_after: feedback.newEloRating, // 🆕 ADD THIS
+            elo_change: feedback.eloChange, // 🆕 ADD THIS
+            category: question.category,
+            difficulty: question.difficulty,
+            created_at: new Date().toISOString(),
+          });
 
-  if (saveError) {
-    console.error('Error saving session:', saveError);
-    toast.error('Failed to save session, but showing feedback.');
-  } else {
-    console.log('✅ Session saved successfully!');
-  }
-}
+        if (saveError) {
+          console.error('Error saving session:', saveError);
+          toast.error('Failed to save session, but showing feedback.');
+        } else {
+          console.log('✅ Session saved successfully!');
+          
+          // 🆕 UPDATE: Update user's ELO rating in user_stats
+          if (feedback.newEloRating) {
+            await supabase
+              .from('user_stats')
+              .update({ elo_rating: feedback.newEloRating })
+              .eq('user_id', user.id);
+          }
+        }
+      }
+
       // Navigate to feedback page with data
       navigate('/feedback', {
         state: {

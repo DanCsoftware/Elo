@@ -15,6 +15,8 @@ interface UserStats {
     medium: number;
     hard: number;
   };
+  eloRating: number; // 🆕 NEW
+  skillRatings: { [key: string]: number }; // 🆕 NEW
 }
 
 export function useUserStats() {
@@ -30,14 +32,61 @@ export function useUserStats() {
 
     async function fetchStats() {
       try {
-        // Get all user sessions
-        const { data: sessions, error } = await supabase
+        // Fetch all sessions
+        const { data: sessions, error: sessionsError } = await supabase
           .from('user_sessions')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (sessionsError) throw sessionsError;
+
+        // Fetch or create user_stats
+        let { data: userStats, error: statsError } = await supabase
+          .from('user_stats')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+
+        if (statsError && statsError.code === 'PGRST116') {
+          // Create initial stats
+          const { data: newStats, error: createError } = await supabase
+            .from('user_stats')
+            .insert({
+              user_id: user.id,
+              streak_days: 0,
+              total_questions: 0,
+              average_score: 0,
+              skill_levels: {
+                strategy: 0,
+                metrics: 0,
+                prioritization: 0,
+                design: 0,
+              },
+              elo_rating: 1200, // 🆕 NEW: Start at 1200
+              skill_ratings: {
+                problem_framing: 1200,
+                user_empathy: 1200,
+                metrics_definition: 1200,
+                tradeoff_analysis: 1200,
+                prioritization: 1200,
+                strategic_thinking: 1200,
+                stakeholder_mgmt: 1200,
+                communication: 1200,
+                technical_judgment: 1200,
+                ambiguity_navigation: 1200,
+                systems_thinking: 1200,
+                market_sense: 1200,
+                experimentation: 1200,
+                risk_assessment: 1200,
+              }
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          userStats = newStats;
+        }
 
         if (!sessions || sessions.length === 0) {
           setStats({
@@ -47,6 +96,8 @@ export function useUserStats() {
             thisWeekChange: 0,
             categoryScores: {},
             difficultyBreakdown: { easy: 0, medium: 0, hard: 0 },
+            eloRating: userStats?.elo_rating || 1200,
+            skillRatings: userStats?.skill_ratings || {},
           });
           setLoading(false);
           return;
@@ -56,36 +107,24 @@ export function useUserStats() {
         const totalSolved = sessions.length;
         const avgScore = sessions.reduce((sum, s) => sum + (s.score || 0), 0) / totalSolved;
 
-        // Calculate streak
-        const streak = calculateStreak(sessions);
-
-        // Calculate this week's performance
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        const thisWeekSessions = sessions.filter(
-          s => new Date(s.created_at) >= oneWeekAgo
-        );
-        const thisWeekAvg = thisWeekSessions.length > 0
-          ? thisWeekSessions.reduce((sum, s) => sum + (s.score || 0), 0) / thisWeekSessions.length
-          : avgScore;
-        const thisWeekChange = avgScore > 0 ? ((thisWeekAvg - avgScore) / avgScore) * 100 : 0;
-
-        // Category performance
-        const categoryScores: { [key: string]: number } = {};
-        const categoryGroups: { [key: string]: number[] } = {};
-        
-        sessions.forEach(s => {
-          if (s.category) {
-            if (!categoryGroups[s.category]) {
-              categoryGroups[s.category] = [];
-            }
-            categoryGroups[s.category].push(s.score || 0);
+        // Category scores
+        const categoryTotals: { [key: string]: { sum: number; count: number } } = {};
+        sessions.forEach(session => {
+          const categoryScores = session.category_scores || session.feedback?.categoryScores;
+          if (categoryScores) {
+            Object.entries(categoryScores).forEach(([category, score]) => {
+              if (!categoryTotals[category]) {
+                categoryTotals[category] = { sum: 0, count: 0 };
+              }
+              categoryTotals[category].sum += score as number;
+              categoryTotals[category].count += 1;
+            });
           }
         });
 
-        Object.keys(categoryGroups).forEach(cat => {
-          const scores = categoryGroups[cat];
-          categoryScores[cat] = (scores.reduce((sum, score) => sum + score, 0) / scores.length) / 10;
+        const categoryScores: { [key: string]: number } = {};
+        Object.entries(categoryTotals).forEach(([category, { sum, count }]) => {
+          categoryScores[category] = sum / count;
         });
 
         // Difficulty breakdown
@@ -95,14 +134,32 @@ export function useUserStats() {
           hard: sessions.filter(s => s.difficulty === 'hard').length,
         };
 
+        // Week over week change
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const recentSessions = sessions.filter(s => new Date(s.created_at) > oneWeekAgo);
+        const olderSessions = sessions.filter(s => new Date(s.created_at) <= oneWeekAgo);
+
+        const recentAvg = recentSessions.length > 0
+          ? recentSessions.reduce((sum, s) => sum + (s.score || 0), 0) / recentSessions.length
+          : 0;
+        const olderAvg = olderSessions.length > 0
+          ? olderSessions.reduce((sum, s) => sum + (s.score || 0), 0) / olderSessions.length
+          : avgScore;
+
+        const thisWeekChange = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) * 100 : 0;
+
         setStats({
           totalSolved,
           avgScore,
-          streak,
+          streak: userStats?.streak_days || 0,
           thisWeekChange,
           categoryScores,
           difficultyBreakdown,
+          eloRating: userStats?.elo_rating || 1200, // 🆕 NEW
+          skillRatings: userStats?.skill_ratings || {}, // 🆕 NEW
         });
+
       } catch (error) {
         console.error('Error fetching stats:', error);
       } finally {
@@ -114,37 +171,4 @@ export function useUserStats() {
   }, [user]);
 
   return { stats, loading };
-}
-
-function calculateStreak(sessions: any[]): number {
-  if (sessions.length === 0) return 0;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Get unique dates
-  const dates = sessions
-    .map(s => {
-      const d = new Date(s.created_at);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    })
-    .filter((value, index, self) => self.indexOf(value) === index)
-    .sort((a, b) => b - a);
-
-  let streak = 0;
-  let checkDate = today.getTime();
-
-  for (const date of dates) {
-    const dayDiff = Math.floor((checkDate - date) / (1000 * 60 * 60 * 24));
-    
-    if (dayDiff === 0 || dayDiff === 1) {
-      streak++;
-      checkDate = date;
-    } else {
-      break;
-    }
-  }
-
-  return streak;
 }

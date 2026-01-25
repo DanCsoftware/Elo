@@ -117,7 +117,40 @@ const Index = () => {
             </div>
           </section>
         )}
-
+        
+{/* ELO Rating Display */}
+{stats && (
+  <section className="bg-card border border-border p-5">
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-sm font-semibold uppercase tracking-wide">
+        Your PM Rating
+      </h2>
+      <span className="text-xs text-muted-foreground">
+        ELO System
+      </span>
+    </div>
+    
+    <div className="flex items-center gap-4">
+      <div className="text-5xl font-bold text-primary">
+        {stats.eloRating}
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-medium mb-1">
+          {stats.eloRating < 1000 && 'Entry Level PM'}
+          {stats.eloRating >= 1000 && stats.eloRating < 1200 && 'Associate PM'}
+          {stats.eloRating >= 1200 && stats.eloRating < 1400 && 'PM'}
+          {stats.eloRating >= 1400 && stats.eloRating < 1600 && 'Senior PM'}
+          {stats.eloRating >= 1600 && stats.eloRating < 1800 && 'Staff PM'}
+          {stats.eloRating >= 1800 && stats.eloRating < 2000 && 'Principal PM'}
+          {stats.eloRating >= 2000 && 'Legendary PM'}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Practice to increase your rating
+        </p>
+      </div>
+    </div>
+  </section>
+)}
         {/* Category Performance */}
         <section className="bg-card border border-border p-5 space-y-4">
           <div className="flex items-center justify-between">

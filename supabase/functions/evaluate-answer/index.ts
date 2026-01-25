@@ -10,6 +10,8 @@ interface EvaluationRequest {
   answer: string;
   category: string;
   difficulty: string;
+  userEloRating?: number; // 🆕 NEW: User's current ELO
+  questionEloDifficulty?: number; // 🆕 NEW: Question's ELO difficulty
 }
 
 interface FeedbackResult {
@@ -23,6 +25,51 @@ interface FeedbackResult {
     prioritization: number;
     design: number;
   };
+  skillScores?: { [key: string]: number }; // 🆕 NEW: 14 skill scores
+  eloChange?: number; // 🆕 NEW: Rating change (+/- points)
+  newEloRating?: number; // 🆕 NEW: Updated rating
+}
+
+// 🆕 UPDATED: More aggressive ELO calculation
+function calculateEloChange(
+  currentRating: number,
+  questionDifficulty: number,
+  scoreOutOf10: number,
+  kFactor: number = 40 // Increased from 32 for bigger swings
+): { newRating: number; change: number } {
+  // Expected score based on rating difference
+  const expectedScore = 1 / (1 + Math.pow(10, (questionDifficulty - currentRating) / 400));
+  
+  // Actual score (normalized to 0-1)
+  const actualScore = scoreOutOf10 / 10;
+  
+  // 🆕 NEW: Apply multiplier for extreme performances
+  let adjustedKFactor = kFactor;
+  
+  // Really bad answer (0-3/10)? Punish harder
+  if (scoreOutOf10 < 4) {
+    adjustedKFactor = kFactor * 1.5; // 50% more penalty
+  }
+  // Excellent answer (9-10/10)? Reward more
+  else if (scoreOutOf10 >= 9) {
+    adjustedKFactor = kFactor * 1.25; // 25% more reward
+  }
+  
+  // Calculate change
+  const change = Math.round(adjustedKFactor * (actualScore - expectedScore));
+  
+  // Apply change with floor/ceiling
+  const newRating = Math.max(800, Math.min(2200, currentRating + change));
+  
+  console.log(`📊 ELO Calculation:
+    Current: ${currentRating}
+    Question Difficulty: ${questionDifficulty}
+    Score: ${scoreOutOf10}/10
+    Expected: ${(expectedScore * 10).toFixed(1)}/10
+    Change: ${change > 0 ? '+' : ''}${change}
+    New: ${newRating}`);
+  
+  return { newRating, change };
 }
 
 // 🆕 NEW: Get company-specific context
@@ -187,7 +234,6 @@ Answer as a ${companyContext.name} PM would think through this problem:`;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -203,14 +249,20 @@ serve(async (req) => {
       );
     }
 
-    // 🆕 UPDATED: Check if this is a request for example answer and extract company
     const url = new URL(req.url);
     const isExampleRequest = url.searchParams.get('type') === 'example';
     const company = url.searchParams.get('company') || 'google';
 
-    const { question, answer, category, difficulty }: EvaluationRequest = await req.json();
+    const { 
+      question, 
+      answer, 
+      category, 
+      difficulty,
+      userEloRating,
+      questionEloDifficulty
+    }: EvaluationRequest = await req.json();
 
-    // 🆕 UPDATED: Handle example answer generation with company
+    // Handle example answer generation
     if (isExampleRequest) {
       console.log(`Generating example answer for ${company}, category: ${category}, difficulty: ${difficulty}`);
       
@@ -230,9 +282,9 @@ serve(async (req) => {
       );
     }
 
-    // ===== ORIGINAL EVALUATION LOGIC CONTINUES =====
+    // ===== EVALUATION LOGIC WITH 14 SKILLS =====
 
-    // Validate input lengths
+    // Validate input
     if (!question || question.length > 2000) {
       return new Response(
         JSON.stringify({ error: 'Invalid question length (max 2000 chars)' }),
@@ -247,29 +299,9 @@ serve(async (req) => {
       );
     }
 
-    // Validate enum values
-    const validCategories = ['strategy', 'metrics', 'prioritization', 'design', 'product sense', 'execution', 'leadership'];
-    const validDifficulties = ['easy', 'medium', 'hard'];
-
-    const normalizedCategory = category?.toLowerCase() || '';
-    const normalizedDifficulty = difficulty?.toLowerCase() || '';
-
-    if (!validCategories.includes(normalizedCategory)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid category' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!validDifficulties.includes(normalizedDifficulty)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid difficulty' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     console.log(`Evaluating answer for category: ${category}, difficulty: ${difficulty}`);
 
+    // 🆕 UPDATED PROMPT: Evaluate against 14 skills
     const prompt = `You are a senior product management interviewer at Google with 10+ years of experience evaluating PM candidates. Your goal is to provide honest, calibrated feedback that helps candidates improve their PM thinking.
 
 QUESTION CONTEXT:
@@ -282,150 +314,106 @@ ${answer}
 
 ---
 
-EVALUATION FRAMEWORK:
+EVALUATION FRAMEWORK - 14 PM SKILLS:
 
-You are evaluating PM THINKING QUALITY across these dimensions:
+**CORE THINKING SKILLS:**
+1. **Problem Framing** - Defining the right problem to solve, clarifying assumptions, identifying constraints
+2. **User Empathy** - Understanding user needs, pain points, segmentation, user research
+3. **Metrics Definition** - Defining success criteria, KPIs, measurement frameworks (HEART, AARRR)
+4. **Trade-off Analysis** - Evaluating costs/benefits, opportunity cost, "if we do X, we sacrifice Y"
+5. **Prioritization** - RICE, ICE, Impact/Effort, sequencing decisions
+6. **Strategic Thinking** - Long-term vision, positioning, market dynamics, competitive landscape
 
-1. **STRUCTURED APPROACH**
-   - Good: Uses frameworks (CIRCLES, HEART, 5 Whys, Impact/Effort matrix) or creates their own logical structure
-   - Bad: Stream of consciousness, jumps between ideas randomly
+**EXECUTION SKILLS:**
+7. **Stakeholder Management** - Aligning teams, executives, cross-functional collaboration
+8. **Communication** - Clear articulation, storytelling, conciseness
+9. **Technical Judgment** - Understanding feasibility, constraints, technical trade-offs
 
-2. **PROBLEM UNDERSTANDING**
-   - Good: Clarifies assumptions, identifies constraints, defines success
-   - Bad: Jumps to solutions without understanding the problem space
-
-3. **ANALYTICAL DEPTH**
-   - Good: Considers trade-offs, thinks through second-order effects, identifies risks
-   - Bad: Surface-level thinking, doesn't explore implications
-
-4. **METRIC-DRIVEN THINKING**
-   - Good: Proposes specific, measurable metrics; explains why they matter
-   - Bad: No metrics, or generic ones like "increase engagement"
-
-5. **USER EMPATHY**
-   - Good: Considers different user segments, pain points, contexts
-   - Bad: Generic "users want" statements without segmentation
-
-6. **BUSINESS ACUMEN**
-   - Good: Connects decisions to business outcomes, considers costs/ROI
-   - Bad: Ignores business viability or resource constraints
-
-7. **COMMUNICATION**
-   - Good: Clear, concise, well-organized with signposts
-   - Bad: Verbose, unclear, hard to follow
+**ADVANCED SKILLS:**
+10. **Ambiguity Navigation** - Thriving with incomplete information, comfort with uncertainty
+11. **Systems Thinking** - Understanding second-order effects, interconnections, unintended consequences
+12. **Market Sense** - Competitive positioning, market timing, TAM understanding
+13. **Experimentation** - A/B testing, hypothesis-driven thinking, learning loops
+14. **Risk Assessment** - Identifying and mitigating risks, reversibility analysis
 
 ---
 
-SCORE CALIBRATION (Use the full 1-10 range):
+SCORE CALIBRATION (Use full 1-10 range):
 
 **9-10: Exceptional (Top 5%)**
-- Leads with clear decision/judgment
-- Identifies non-obvious core insight (like "reversibility" or "foundational primitive")
-- Proposes creative alternatives beyond given options
-- Names specific metrics with clear rationale (not generic)
-- Sounds like a senior PM, not a student
-- Example: "I wouldn't ship this. Issue categorization is a foundational primitive - wrong 40% means users lose trust. Instead: opt-in suggestions, track correction rate."
+- Leads with clear judgment
+- Non-obvious core insight
+- Creative alternatives
+- Specific metrics with rationale
+- Sounds like senior PM
 
 **7-8: Strong (Top 25%)**
-- Clear structure and decision
-- Shows trade-off thinking
-- Specific metrics with reasoning
-- Missing the "aha" insight or creative approach
-- Sounds competent but conventional
-- Example: "I'd delay. 40% error rate damages trust. Focus on improving model accuracy to 80%+. Track accuracy and user satisfaction."
+- Clear structure
+- Trade-off thinking
+- Specific metrics
+- Competent but conventional
 
-**5-6: Adequate (Middle 50%)** 
-- Has basic structure
-- Identifies the problem
+**5-6: Adequate (Middle 50%)**
+- Basic structure
 - Generic metrics OR no metrics
-- No real trade-off analysis
-- Feels surface-level
-- Example: "I'd delay it. Need to improve accuracy. Could track user feedback."
+- Surface-level
 
 **3-4: Weak (Bottom 25%)**
 - Minimal structure
-- Misses key considerations
 - No metrics
 - Doesn't demonstrate PM thinking
-- Example: "Just ship it as beta and iterate based on feedback."
 
 **1-2: Very Weak (Bottom 5%)**
-- Doesn't answer the question
+- Doesn't answer question
 - Test/joke answers
-- Shows fundamental misunderstanding
-- Example: "This is a test answer" or "Add more features"
 
-CRITICAL CALIBRATION RULES:
-1. **Most answers should be 3-4 or 7-8, NOT 5-6**
-2. **5.5 should be RARE** - it means exactly average, which is unusual
-3. **Be harsh on missing metrics** - No specific metrics = max 5/10
-4. **Be harsh on no trade-offs** - No trade-offs mentioned = max 6/10
-5. **Use decimals** - Don't default to whole numbers. 6.5, 7.5 are valid.
-6. **Framework name-dropping alone ≠ high score** - Saying "I'll use RICE" doesn't make it good
-
-SCORE DISTRIBUTION TARGET:
-- 1-2: 5% (nonsense answers)
-- 3-4: 20% (weak, missing basics)
-- 5-6: 30% (adequate, safe but unremarkable)
-- 7-8: 35% (strong, would advance in interview)
-- 9-10: 10% (exceptional, would strongly advance)
-
-If you're tempted to give 5.5 again, ask: "What separates this from an average answer?" If nothing, go lower (4) or higher (7).
-
----
-
-SCORING DECISION TREE:
-
-1. **Does the answer actually address the question?**
-   - No → Score 1-2 (regardless of writing quality)
-   - Yes → Continue
-
-2. **Is there ANY analytical structure or framework?**
-   - No structure → Max 4/10
-   - Some structure → 5-7/10 range
-   - Strong structure → 7-10/10 range
-
-3. **Are trade-offs explicitly considered?**
-   - No trade-offs → Cannot exceed 6/10
-   - Generic trade-offs → 6-7/10 range
-   - Specific, insightful trade-offs → 7-10/10 range
-
-4. **Are metrics specific and justified?**
-   - No metrics → Cannot exceed 5/10
-   - Generic metrics → 5-6/10 range  
-   - Specific, well-reasoned metrics → 7-10/10 range
-
-5. **Depth of analysis for difficulty level:**
-   - Easy questions: Should be thorough and complete → Incomplete = max 6/10
-   - Medium questions: Should show trade-off thinking → No trade-offs = max 5/10
-   - Hard questions: Should show sophisticated judgment → No sophistication = max 4/10
+CRITICAL RULES:
+- No specific metrics = max 5/10
+- No trade-offs = max 6/10
+- Use decimals (6.5, 7.5)
 
 ---
 
 OUTPUT FORMAT (Return ONLY valid JSON, no markdown):
 
 {
-  "score": <number 0-10, can use decimals like 6.5>,
+  "score": <overall score 0-10>,
   "strengths": [
-    "<Specific strength with evidence from their answer>",
-    "<Another specific strength>",
-    "<Third specific strength>"
+    "<Specific strength>",
+    "<Another strength>",
+    "<Third strength>"
   ],
   "weaknesses": [
-    "<Specific gap with what was missing>",
-    "<Another specific gap>",
-    "<Third specific gap>"
+    "<Specific gap>",
+    "<Another gap>",
+    "<Third gap>"
   ],
-  "detailedFeedback": "<2-3 sentences of actionable advice on how to improve. Be direct but constructive. Reference specific frameworks or approaches they should learn.>",
+  "detailedFeedback": "<2-3 sentences of actionable advice>",
   "categoryScores": {
     "strategy": <1-10>,
     "metrics": <1-10>,
     "prioritization": <1-10>,
     "design": <1-10>
+  },
+  "skillScores": {
+    "problem_framing": <1-10>,
+    "user_empathy": <1-10>,
+    "metrics_definition": <1-10>,
+    "tradeoff_analysis": <1-10>,
+    "prioritization": <1-10>,
+    "strategic_thinking": <1-10>,
+    "stakeholder_mgmt": <1-10>,
+    "communication": <1-10>,
+    "technical_judgment": <1-10>,
+    "ambiguity_navigation": <1-10>,
+    "systems_thinking": <1-10>,
+    "market_sense": <1-10>,
+    "experimentation": <1-10>,
+    "risk_assessment": <1-10>
   }
 }
 
-Remember: Your feedback shapes PM careers. Be honest, be calibrated, be helpful.`;
+Evaluate which skills are most relevant to this question and score them accordingly. Skills not heavily tested can be scored 0 or omitted.`;
 
     // Call Gemini API
     const geminiResponse = await fetch(
@@ -467,7 +455,7 @@ Remember: Your feedback shapes PM careers. Be honest, be calibrated, be helpful.
       );
     }
 
-    // Extract JSON from response
+    // Extract JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('No JSON found in response:', text);
@@ -485,6 +473,20 @@ Remember: Your feedback shapes PM careers. Be honest, be calibrated, be helpful.
         JSON.stringify({ error: 'Invalid feedback structure from AI' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // 🆕 NEW: Calculate ELO change if ratings provided
+    if (userEloRating && questionEloDifficulty) {
+      const eloResult = calculateEloChange(
+        userEloRating,
+        questionEloDifficulty,
+        feedback.score
+      );
+      
+      feedback.eloChange = eloResult.change;
+      feedback.newEloRating = eloResult.newRating;
+      
+      console.log(`ELO: ${userEloRating} → ${eloResult.newRating} (${eloResult.change > 0 ? '+' : ''}${eloResult.change})`);
     }
 
     console.log('Evaluation complete, score:', feedback.score);
