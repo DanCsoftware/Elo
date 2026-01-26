@@ -126,7 +126,7 @@ const Index = () => {
         Your PM Rating
       </h2>
       <span className="text-xs text-muted-foreground">
-        ELO System
+        Elo System
       </span>
     </div>
     

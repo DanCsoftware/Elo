@@ -155,81 +155,155 @@ function getCompanyContext(company: string) {
 }
 
 // Generate example answers
-async function generateExampleAnswer(
-  question: string,
-  category: string,
-  difficulty: string,
-  company: string,
-  apiKey: string
-): Promise<string> {
+if (requestType === 'example') {
+  console.log('Generating example answer...');
   
-  const companyContext = getCompanyContext(company);
-  
-  const examplePrompt = `You are a Senior PM at ${companyContext.name} with 10+ years of experience.
+  const { question, category, difficulty } = requestBody;
+  const company = url.searchParams.get('company') || 'google';
+
+  // Company-specific philosophies
+  const companyStyles = {
+    google: {
+      style: "Data-driven, user-centric, emphasize metrics and experimentation. Google PMs lead with 'What does the data say?' and always quantify impact.",
+      frameworks: "Use HEART metrics, OKRs, A/B testing rigor. Always show funnel analysis and conversion math.",
+      tone: "Analytical, hypothesis-driven, metric-focused. Start with data, end with experiments."
+    },
+    apple: {
+      style: "User experience first, opinionated about design. Apple PMs defend product decisions with conviction about user needs.",
+      frameworks: "Jobs-to-be-done, user journey mapping. Less metrics, more 'this is the right experience because...'",
+      tone: "Confident, design-forward, user-empathetic. Strong POV on what users want."
+    },
+    meta: {
+      style: "Growth-obsessed, network effects, viral loops. Meta PMs speak in DAU/MAU and retention curves.",
+      frameworks: "Growth accounting, cohort retention, viral coefficient. Everything ties to growth.",
+      tone: "Aggressive, growth-focused, quantitative. Every answer includes growth metrics."
+    },
+    stripe: {
+      style: "Developer-centric, API-first, infrastructure thinking. Stripe PMs consider system design and developer experience.",
+      frameworks: "Technical feasibility, API design, backwards compatibility. Consider platform implications.",
+      tone: "Technical, thoughtful, infrastructure-minded. Balance user needs with system constraints."
+    },
+    amazon: {
+      style: "Customer obsession, working backwards from customer needs. Amazon PMs write press releases before building.",
+      frameworks: "Working backwards, six-page narratives, dive deep. Start with customer problem.",
+      tone: "Customer-first, detail-oriented, long-term thinking. Cite customer pain points."
+    },
+    coinbase: {
+      style: "Crypto-native, regulatory aware, trust and security paramount. Coinbase PMs balance innovation with compliance.",
+      frameworks: "Security-first design, regulatory constraints, crypto economics.",
+      tone: "Cautious, security-minded, regulatory-aware. Consider trust implications."
+    },
+    discord: {
+      style: "Community-first, engagement-driven, creator empowerment. Discord PMs optimize for community health.",
+      frameworks: "Community metrics, engagement loops, creator tools.",
+      tone: "Community-focused, engagement-driven, creator-centric."
+    },
+    chainlink: {
+      style: "Decentralization, oracle networks, Web3 infrastructure. Deep technical understanding required.",
+      frameworks: "Decentralized systems, blockchain architecture, node economics.",
+      tone: "Technical, decentralization-focused, infrastructure-level thinking."
+    },
+    twitter: {
+      style: "Real-time engagement, conversation health, public discourse. Balance virality with safety.",
+      frameworks: "Engagement metrics, conversation quality, content moderation.",
+      tone: "Fast-paced, engagement-focused, balance growth and safety."
+    }
+  };
+
+  const companyInfo = companyStyles[company as keyof typeof companyStyles] || companyStyles.google;
+
+  const examplePrompt = `You are generating a REFERENCE-QUALITY answer that would score 9.0-9.5 out of 10 in a ${company.toUpperCase()} PM interview.
+
+QUESTION: ${question}
+CATEGORY: ${category}
+DIFFICULTY: ${difficulty}
+COMPANY: ${company.toUpperCase()}
 
 COMPANY PHILOSOPHY:
-${companyContext.philosophy}
+${companyInfo.style}
 
-WHAT ${companyContext.name.toUpperCase()} PRIORITIZES:
-${companyContext.prioritizes.join('\n')}
+KEY FRAMEWORKS FOR ${company.toUpperCase()}:
+${companyInfo.frameworks}
 
-Question: ${question}
-Category: ${category}
-Difficulty: ${difficulty}
+TONE:
+${companyInfo.tone}
 
-CRITICAL: Excellent PM thinking is universal - metrics, trade-offs, user focus, business impact. Your answer should reflect ${companyContext.name}'s *approach* to solving problems, but the fundamentals of good product thinking don't change. Don't "play a character" - demonstrate real PM judgment through ${companyContext.name}'s lens.
+CRITICAL REQUIREMENTS FOR A 9/10 ANSWER:
 
-REQUIREMENTS:
-1. Lead with judgment - Clear decision/POV immediately
-2. Reflect ${companyContext.name}'s priorities naturally (don't force it)
-3. Be concise - 150-250 words MAX
-4. Sound human and confident
-5. Show creativity and insight
-6. Specific metrics with rationale
-7. NO framework name-dropping
+1. **START WITH CLARIFYING QUESTIONS** (30-50 words)
+   - Ask about context, constraints, metrics
+   - Show you need data before deciding
+   - Example: "Before I dive in, I'd want to understand: What's our current conversion rate? Where is traffic coming from? What's our baseline?"
 
-Answer as a ${companyContext.name} PM would think through this problem:`;
+2. **QUANTIFY THE FUNNEL** (if relevant)
+   - Break down the flow with actual %s
+   - Example: "If 1M visitors but only 100K reach checkout, that's a 10% progression rate - the issue is earlier in the funnel"
+   - Show math, not just stages
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: examplePrompt }] }],
-        generationConfig: { temperature: 0.8, maxOutputTokens: 2048 },
-      }),
-    }
-  );
+3. **EXPLICIT PRIORITIZATION WITH REASONING** (critical)
+   - Don't list 5 things equally
+   - Say: "I'd start with X because Y, then move to Z if that doesn't work"
+   - Rank by impact/effort or likelihood
 
-  if (!response.ok) {
-    throw new Error('Failed to generate example answer');
-  }
+4. **INCLUDE TRADEOFFS** (required)
+   - "The risk of X is Y, but the benefit is Z"
+   - "If we do A, we can't do B because..."
+   - Show you understand constraints
 
-  const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
+5. **SPECIFIC METRICS, NOT VAGUE GOALS**
+   - Bad: "improve engagement"
+   - Good: "increase DAU/MAU from 35% to 40% in 3 months"
+   - Always include timeframes and targets
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+6. **COMPANY-SPECIFIC FRAMEWORKS**
+   - Use ${company}'s actual language and tools
+   - Reference their known practices
+   - ${companyInfo.frameworks}
+
+7. **END WITH VALIDATION PLAN**
+   - How would you test this?
+   - What metrics prove success?
+   - What would make you change course?
+
+STRUCTURE:
+[Clarifying Questions - 50 words]
+
+[Framework/Approach - explain your thinking model - 100 words]
+
+[Prioritized Analysis - ranked options with reasoning - 150 words]
+
+[Specific Recommendation with Metrics - 100 words]
+
+[Validation Plan - how you'd test - 50 words]
+
+TOTAL: 400-500 words. Be PRECISE. Be SPECIFIC. Use NUMBERS.
+
+This should be a REFERENCE answer that shows mastery of PM craft.
+
+Generate the answer now in plain text (no JSON, no markdown formatting):`;
 
   try {
-    const GEMINI_API_KEY = Deno.env.get('VITE_GEMINI_API_KEY');
-    
-    if (!GEMINI_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'Gemini API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const completion = await model.generateContent(examplePrompt);
+    const exampleAnswer = completion.response.text();
 
-    const url = new URL(req.url);
-    const requestType = url.searchParams.get('type');
-    const company = url.searchParams.get('company') || 'google';
-
-    const requestBody = await req.json();
+    return new Response(
+      JSON.stringify({ exampleAnswer }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200 
+      }
+    );
+  } catch (error: any) {
+    console.error('Example generation error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500 
+      }
+    );
+  }
+}
 
     // 🆕 NEW: Handle pushback evaluation
     if (requestType === 'pushback') {
@@ -247,40 +321,58 @@ ORIGINAL FEEDBACK: ${JSON.stringify(originalFeedback)}
 THEIR PUSHBACK:
 ${pushbackText}
 
-Your job: Evaluate their pushback like a peer PM would in a healthy debate.
+CRITICAL INSTRUCTIONS:
+1. **DEFAULT TO UPHELD** - Most pushbacks are wrong. The original evaluation was done carefully.
+2. **BE EXTREMELY SKEPTICAL** - They need to prove the evaluation missed something significant, not just complain.
+3. **Require CONCRETE EVIDENCE** - Vague claims like "I did mention metrics" don't count unless they quote EXACTLY where.
+4. **Compare to Staff+ PM standards** - Would a Principal PM at Google/Meta/Stripe answer this way?
+5. **Check for reading comprehension** - Did they actually understand what the original feedback said?
 
-CRITICAL RULES:
-1. DO NOT automatically agree. Be skeptical but fair.
-2. If they make valid points you missed, acknowledge it and adjust score.
-3. If they're wrong, explain WHY with specific examples from their answer.
-4. If they're partially right, give partial credit.
-5. Challenge weak arguments. Don't let them off easy.
-6. Maintain professional tone - this is peer debate, not adversarial.
+WHAT COUNTS AS VALID PUSHBACK:
+✅ They quote SPECIFIC text from their answer that was overlooked
+✅ They cite a framework/metric by name that WAS in their answer but wasn't credited
+✅ They provide industry context that makes their approach valid (with sources)
+✅ They correctly identify a factual error in the evaluation
+
+WHAT DOES NOT COUNT:
+❌ "I think my answer was better than the score suggests" (opinion, no evidence)
+❌ "I mentioned metrics" without quoting where
+❌ Disagreeing with the rubric itself
+❌ Arguing semantics or word choice
+❌ Claiming implied knowledge that wasn't written
+
+ADJUSTMENT GUIDELINES:
+- **UPHELD (85% of cases)**: Original score was fair. Pushback is emotional, not substantive.
+- **PARTIALLY ADJUSTED (+1-2 points)**: Found ONE legitimate overlooked element, but overall assessment stands.
+- **FULLY ADJUSTED (+3-5 points)**: Multiple significant elements were missed AND answer truly deserves higher score.
+
+NEVER adjust more than 5 points. If they claim they deserve 9/10 from a 4/10, they're delusional.
 
 RESPONSE FORMAT (Return ONLY valid JSON, no markdown):
 {
   "verdict": "UPHELD" | "PARTIALLY_ADJUSTED" | "FULLY_ADJUSTED",
   "newScore": <number 0-10>,
-  "reasoning": "<2-3 sentences explaining your decision>",
+  "reasoning": "<2-3 sentences explaining decision with SPECIFIC examples from their answer>",
   "counterpoints": [
-    "<Specific point they made and your response>",
-    "<Another point>"
+    "<Challenge their weakest argument with evidence>",
+    "<Another specific counterpoint>"
   ],
-  "finalThoughts": "<1 sentence - what they should focus on next>"
+  "finalThoughts": "<1 sentence - what they should actually focus on improving>"
 }
 
 EXAMPLES:
 
-**UPHELD:**
-"You claim you addressed metrics, but saying 'track engagement' isn't specific. Which engagement metric? What's the target? Generic metrics don't count. Score stands."
+**UPHELD (Most common):**
+"You claim you 'clearly defined metrics' but your answer only says 'track engagement' with no baseline, target, or timeframe. That's not a defined metric. Score remains 5.5/10."
 
-**PARTIALLY_ADJUSTED:**
-"Fair point - you did mention 'DAU increase of 10%' which I missed. However, you didn't define success for the secondary segment. Adjusting from 5.5 to 6.5."
+**PARTIALLY ADJUSTED (Rare):**
+"You're right - you did specify 'increase DAU by 10% in Q2' which I initially missed. However, you still didn't address the secondary user segment at all. Adjusting from 5.5 to 6.5/10."
 
-**FULLY_ADJUSTED:**
-"You're right. You clearly outlined metrics (DAU, retention, NPS), trade-offs (speed vs quality), and segments. I was too harsh. Adjusting to 7.5."
+**FULLY ADJUSTED (Very rare, <5% of cases):**
+"After re-reading, you did provide: (1) Specific metrics with targets, (2) Clear trade-offs with opportunity cost analysis, (3) Risk mitigation strategies. I was too harsh on initial read. Adjusting to 8.0/10."
 
-Be specific. Be fair. Be rigorous.`;
+Be rigorous. Be fair. But be MUCH more likely to uphold than adjust.`;
+
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
@@ -372,12 +464,31 @@ EVALUATION FRAMEWORK - 14 PM SKILLS:
 **ADVANCED:**
 10. Ambiguity Navigation 11. Systems Thinking 12. Market Sense 13. Experimentation 14. Risk Assessment
 
-SCORE CALIBRATION:
-**9-10:** Exceptional - Non-obvious insight, specific metrics, creative alternatives
-**7-8:** Strong - Clear structure, trade-offs, specific metrics
-**5-6:** Adequate - Basic structure, generic or missing metrics
-**3-4:** Weak - Minimal structure, no metrics, no PM thinking
-**1-2:** Very Weak - Test answers, doesn't address question, under 30 words
+SCORE CALIBRATION (Use the full 1-10 range WITH DECIMALS):
+
+Use decimals for precision: 6.2, 6.9, 7.5, 8.3, etc.
+
+**9.0-10.0: Exceptional (Top 5%)**
+- 9.8-10.0: Perfect answer, nothing to improve
+- 9.0-9.7: Outstanding, minor refinements possible
+
+**7.0-8.9: Strong (Top 25%)**
+- 8.0-8.9: Very strong, would definitely advance
+- 7.0-7.9: Solid, likely to advance
+
+**5.0-6.9: Adequate (Middle 50%)** 
+- 6.0-6.9: Acceptable but needs improvement
+- 5.0-5.9: Barely adequate, significant gaps
+
+**3.0-4.9: Weak (Bottom 25%)**
+- 4.0-4.9: Major gaps, unlikely to advance
+- 3.0-3.9: Fundamental issues
+
+**1.0-2.9: Very Weak (Bottom 5%)**
+- 2.0-2.9: Misunderstands question
+- 1.0-1.9: Test answer or gibberish
+
+Always lean to use decimals - they matter. 6.2 vs 6.9 is a significant difference.
 
 CRITICAL RULES:
 - "This is a test" = 1/10
@@ -393,7 +504,27 @@ OUTPUT (JSON only, no markdown):
   "detailedFeedback": "<2-3 sentences>",
   "categoryScores": {"strategy": <1-10>, "metrics": <1-10>, "prioritization": <1-10>, "design": <1-10>},
   "skillScores": {"problem_framing": <1-10>, "user_empathy": <1-10>, "metrics_definition": <1-10>, "tradeoff_analysis": <1-10>, "prioritization": <1-10>, "strategic_thinking": <1-10>, "stakeholder_mgmt": <1-10>, "communication": <1-10>, "technical_judgment": <1-10>, "ambiguity_navigation": <1-10>, "systems_thinking": <1-10>, "market_sense": <1-10>, "experimentation": <1-10>, "risk_assessment": <1-10>}
-}`;
+}
+OUTPUT FORMAT (Return ONLY valid JSON, no markdown):
+
+{
+  "score": <overall score 0-10>,
+  "strengths": [
+    "<Quote exact phrase from answer> - <Why this is good>",
+    "<Another quote> - <Explanation>",
+    "<Third quote> - <Explanation>"
+  ],
+  "weaknesses": [
+    "<What's missing or weak> - <Quote where this was attempted or should have been>",
+    "<Another gap> - <Specific example>",
+    "<Third gap> - <Evidence>"
+  ],
+  "detailedFeedback": "<Reference SPECIFIC phrases from their answer, not vague descriptions>",
+  // ... rest
+}
+
+CRITICAL: Always QUOTE the candidate's exact words when praising or criticizing. Don't say "you mentioned metrics" - say "you said 'increase DAU by 10%' which shows..."`;
+
 
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,

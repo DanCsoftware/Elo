@@ -124,8 +124,8 @@ export function useUserStats() {
 
         const categoryScores: { [key: string]: number } = {};
         Object.entries(categoryTotals).forEach(([category, { sum, count }]) => {
-        categoryScores[category] = (sum / count) * 10; // 🆕 MULTIPLY BY 10 to convert to percentage
-    });
+          categoryScores[category] = sum / count; // ✅ CORRECT - just average the scores (already 0-10)
+        });
 
         // Difficulty breakdown
         const difficultyBreakdown = {

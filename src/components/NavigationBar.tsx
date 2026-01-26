@@ -25,7 +25,7 @@ const NavigationBar = () => {
             />
             {/* ELO Text - Technical Font */}
             <span className="text-2xl font-bold tracking-tight text-foreground" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-              ELO
+              Elo
             </span>
           </Link>
 

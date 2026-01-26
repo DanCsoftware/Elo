@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { Check, X, Sparkles, Loader2, ChevronDown, ChevronUp, TrendingUp, TrendingDown } from 'lucide-react';
+import { Check, X, Sparkles, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { FeedbackResult } from '@/lib/gemini';
 import { Question } from '@/lib/supabase';
 import { FrameworkTerm } from '@/components/FrameworkTerm';
@@ -25,6 +26,7 @@ const Feedback = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
+  const { user, signInWithGoogle } = useAuth();
   
   const [showExample, setShowExample] = useState(false);
   const [exampleAnswer, setExampleAnswer] = useState<string | null>(null);
@@ -32,7 +34,6 @@ const Feedback = () => {
   const [selectedCompany, setSelectedCompany] = useState('google');
   const [companySelectorExpanded, setCompanySelectorExpanded] = useState(false);
   
-  // Pushback state
   const [showPushback, setShowPushback] = useState(false);
   const [pushbackText, setPushbackText] = useState('');
   const [pushbackLoading, setPushbackLoading] = useState(false);
@@ -44,8 +45,8 @@ const Feedback = () => {
     finalThoughts: string;
   } | null>(null);
 
-  // Collapsible sections
   const [showCategoryBreakdown, setShowCategoryBreakdown] = useState(false);
+  const [showYourAnswer, setShowYourAnswer] = useState(false);
 
   const highlightFrameworks = (text: string) => {
     const frameworks = [
@@ -73,6 +74,24 @@ const Feedback = () => {
     });
   };
 
+  if (!user) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-3">Sign In to View Feedback</h1>
+            <p className="text-muted-foreground text-lg">
+              Track your progress and get detailed feedback
+            </p>
+          </div>
+          <Button onClick={signInWithGoogle} size="lg">
+            Sign In with Google
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
   if (!state?.feedback) {
     return (
       <Layout>
@@ -87,8 +106,8 @@ const Feedback = () => {
   const { feedback, question, answer } = state;
 
   const handlePushback = async () => {
-    if (pushbackText.length < 500) {
-      toast.error('Please write at least 100 words (≈500 characters) to defend your position.');
+    if (pushbackText.length > 500) {
+      toast.error('Please defend your position in under 500 characters');
       return;
     }
 
@@ -173,21 +192,20 @@ const Feedback = () => {
     <Layout>
       <div className="space-y-4 max-w-3xl mx-auto pb-6">
         
-        {/* Header: Question + ELO (Primary) + Score (Secondary) */}
-        <section className="bg-card border border-border p-5 space-y-4">
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Question</p>
-            <p className="text-sm text-foreground leading-relaxed">{question.text}</p>
-          </div>
+        {/* Question */}
+        <section className="bg-card border border-border p-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Question</p>
+          <p className="text-sm text-foreground leading-relaxed">{question.text}</p>
+        </section>
 
-          <div className="flex items-center justify-between pt-3 border-t border-border">
-            {/* LEFT: ELO Rating (Primary Focus) */}
+        {/* Elo Rating + Score + Actions */}
+        <section className="bg-card border border-border p-5">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               {feedback.eloChange !== undefined && feedback.newEloRating && (
                 <>
-                  {/* ELO Rating - MAIN DISPLAY */}
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">ELO Rating</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Elo Rating</p>
                     <div className="flex items-baseline gap-2">
                       <span className="text-5xl font-bold text-primary">
                         {feedback.newEloRating}
@@ -212,13 +230,10 @@ const Feedback = () => {
                       </div>
                     </div>
                   </div>
-
-                  {/* Visual Divider */}
                   <div className="h-16 w-px bg-border" />
                 </>
               )}
 
-              {/* Answer Score - Secondary */}
               <div className="text-center">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Answer Score</p>
                 <div className="flex items-baseline gap-1">
@@ -230,14 +245,9 @@ const Feedback = () => {
               </div>
             </div>
 
-            {/* RIGHT: Quick Actions */}
             <div className="flex gap-2">
-              {!showPushback && !pushbackResult && (
-                <Button
-                  onClick={() => setShowPushback(true)}
-                  size="sm"
-                  variant="outline"
-                >
+              {!showPushback && !pushbackResult && feedback.score < 9 && (
+                <Button onClick={() => setShowPushback(true)} size="sm" variant="outline">
                   Contest Score
                 </Button>
               )}
@@ -246,6 +256,27 @@ const Feedback = () => {
               </Button>
             </div>
           </div>
+        </section>
+
+        {/* Your Answer - Collapsible */}
+        <section className="bg-card border border-border p-5">
+          <button
+            onClick={() => setShowYourAnswer(!showYourAnswer)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <h3 className="text-sm font-semibold uppercase tracking-wide">
+              Your Answer
+            </h3>
+            {showYourAnswer ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          
+          {showYourAnswer && (
+            <div className="mt-3 pt-3 border-t border-border">
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {answer}
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Pushback Section */}
@@ -266,7 +297,7 @@ const Feedback = () => {
                 />
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    {pushbackText.length} / 500+ characters
+                    {pushbackText.length} / 500 characters (max)
                   </span>
                   <div className="flex gap-2">
                     <Button
@@ -280,7 +311,7 @@ const Feedback = () => {
                     <Button
                       onClick={handlePushback}
                       size="sm"
-                      disabled={pushbackText.length < 500 || pushbackLoading}
+                      disabled={pushbackText.length > 500 || pushbackLoading}
                     >
                       {pushbackLoading ? (
                         <><Loader2 className="w-4 h-4 animate-spin mr-2" />Evaluating...</>
@@ -324,7 +355,7 @@ const Feedback = () => {
           </section>
         )}
 
-        {/* Feedback - Strengths & Weaknesses in 2 columns */}
+        {/* Strengths & Weaknesses */}
         <section className="grid md:grid-cols-2 gap-4">
           <div className="bg-card border border-border p-5 space-y-2">
             <h3 className="text-sm font-semibold uppercase tracking-wide flex items-center gap-2">
@@ -367,7 +398,7 @@ const Feedback = () => {
           </p>
         </section>
 
-        {/* Category Breakdown - Collapsible */}
+        {/* Category Breakdown */}
         <section className="bg-card border border-border p-5">
           <button
             onClick={() => setShowCategoryBreakdown(!showCategoryBreakdown)}
@@ -376,56 +407,41 @@ const Feedback = () => {
             <h3 className="text-sm font-semibold uppercase tracking-wide">
               Category Breakdown
             </h3>
-            {showCategoryBreakdown ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
+            {showCategoryBreakdown ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
           
           {showCategoryBreakdown && (
             <div className="grid grid-cols-4 gap-4 mt-3 pt-3 border-t border-border">
               {Object.entries(feedback.categoryScores).map(([category, score]) => (
                 <div key={category} className="text-center">
-                  <p className="text-xs text-muted-foreground uppercase mb-1">
-                    {category}
-                  </p>
-                  <span className={`text-2xl font-bold ${getScoreColor(score)}`}>
-                    {score}
-                  </span>
+                  <p className="text-xs text-muted-foreground uppercase mb-1">{category}</p>
+                  <span className={`text-2xl font-bold ${getScoreColor(score)}`}>{score}</span>
                 </div>
               ))}
             </div>
           )}
         </section>
 
-        {/* Example Answer Section */}
-        <section className="bg-card border border-border p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide">
-                Example 9/10 Answer
-              </h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                See how a senior PM would answer
-              </p>
-            </div>
-            {!showExample && (
-              <Button
-                onClick={handleGenerateExample}
-                disabled={loadingExample}
-                size="sm"
-                variant="outline"
-                className="gap-2"
-              >
-                {loadingExample ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" />Generating...</>
-                ) : (
-                  <><Sparkles className="w-4 h-4" />Show Example</>
-                )}
-              </Button>
-            )}
-          </div>
+{/* Example Answer */}
+<section className="bg-card border border-border p-5 space-y-3">
+  <div className="flex items-center justify-between">
+    <div>
+      <h3 className="text-sm font-semibold uppercase tracking-wide">Example 9/10 Answer</h3>
+      <p className="text-xs text-muted-foreground mt-1">See how a senior PM would answer</p>
+    </div>
+    {!showExample && (
+      <Button onClick={handleGenerateExample} disabled={loadingExample} size="sm" variant="outline">
+        {loadingExample ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            Generating...
+          </>
+        ) : (
+          'Generate Answer'
+        )}
+      </Button>
+    )}
+  </div>
 
           {!showExample && (
             <CompanySelector
@@ -445,14 +461,10 @@ const Feedback = () => {
           )}
         </section>
 
-        {/* Bottom Actions */}
+        {/* Actions */}
         <div className="flex gap-3">
-          <Button onClick={() => navigate('/practice')} size="sm">
-            Next Question
-          </Button>
-          <Button variant="secondary" size="sm" asChild>
-            <Link to="/">Dashboard</Link>
-          </Button>
+          <Button onClick={() => navigate('/practice')} size="sm">Next Question</Button>
+          <Button variant="secondary" size="sm" asChild><Link to="/">Dashboard</Link></Button>
         </div>
       </div>
     </Layout>
