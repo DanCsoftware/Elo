@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { Check, X, Sparkles, Loader2, ChevronUp } from 'lucide-react';
+import { Check, X, Sparkles, Loader2, ChevronDown, ChevronUp, TrendingUp, TrendingDown } from 'lucide-react';
 import { FeedbackResult } from '@/lib/gemini';
 import { Question } from '@/lib/supabase';
 import { FrameworkTerm } from '@/components/FrameworkTerm';
@@ -29,12 +29,24 @@ const Feedback = () => {
   const [showExample, setShowExample] = useState(false);
   const [exampleAnswer, setExampleAnswer] = useState<string | null>(null);
   const [loadingExample, setLoadingExample] = useState(false);
-  
-  // 🆕 NEW: Company selection state
   const [selectedCompany, setSelectedCompany] = useState('google');
   const [companySelectorExpanded, setCompanySelectorExpanded] = useState(false);
+  
+  // Pushback state
+  const [showPushback, setShowPushback] = useState(false);
+  const [pushbackText, setPushbackText] = useState('');
+  const [pushbackLoading, setPushbackLoading] = useState(false);
+  const [pushbackResult, setPushbackResult] = useState<{
+    verdict: 'UPHELD' | 'PARTIALLY_ADJUSTED' | 'FULLY_ADJUSTED';
+    newScore: number;
+    reasoning: string;
+    counterpoints: string[];
+    finalThoughts: string;
+  } | null>(null);
 
-  // Highlight framework terms with clickable components
+  // Collapsible sections
+  const [showCategoryBreakdown, setShowCategoryBreakdown] = useState(false);
+
   const highlightFrameworks = (text: string) => {
     const frameworks = [
       "HEART", "5 Whys", "CIRCLES", "RICE", "Impact/Effort",
@@ -61,7 +73,6 @@ const Feedback = () => {
     });
   };
 
-  // Handle case where page is accessed directly without state
   if (!state?.feedback) {
     return (
       <Layout>
@@ -73,7 +84,51 @@ const Feedback = () => {
     );
   }
 
-  const { feedback, question } = state;
+  const { feedback, question, answer } = state;
+
+  const handlePushback = async () => {
+    if (pushbackText.length < 500) {
+      toast.error('Please write at least 100 words (≈500 characters) to defend your position.');
+      return;
+    }
+
+    setPushbackLoading(true);
+    try {
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/evaluate-answer?type=pushback`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            question: question.text,
+            originalAnswer: answer,
+            originalScore: feedback.score,
+            originalFeedback: feedback,
+            pushbackText,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to evaluate pushback');
+      }
+
+      const result = await response.json();
+      setPushbackResult(result);
+      toast.success('Pushback evaluated!');
+    } catch (error) {
+      console.error('Error with pushback:', error);
+      toast.error('Failed to evaluate pushback. Please try again.');
+    } finally {
+      setPushbackLoading(false);
+    }
+  };
 
   const handleGenerateExample = async () => {
     setLoadingExample(true);
@@ -81,7 +136,6 @@ const Feedback = () => {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
       const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      // 🆕 UPDATED: Add company parameter to URL
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/evaluate-answer?type=example&company=${selectedCompany}`,
         {
@@ -100,8 +154,7 @@ const Feedback = () => {
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate example');
+        throw new Error('Failed to generate example');
       }
 
       const data = await response.json();
@@ -116,104 +169,188 @@ const Feedback = () => {
     }
   };
 
-  const handleNextQuestion = () => {
-    navigate('/practice');
-  };
-
   return (
     <Layout>
-      <div className="space-y-6 max-w-3xl mx-auto">
-        {/* Question Reference */}
-        <section className="bg-card border border-border p-5">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Question</p>
-          <p className="text-sm text-foreground leading-relaxed">{question.text}</p>
-        </section>
+      <div className="space-y-4 max-w-3xl mx-auto pb-6">
+        
+        {/* Header: Question + ELO (Primary) + Score (Secondary) */}
+        <section className="bg-card border border-border p-5 space-y-4">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Question</p>
+            <p className="text-sm text-foreground leading-relaxed">{question.text}</p>
+          </div>
 
-        {/* Score Section */}
-        <section className="bg-card border border-border p-6 flex flex-col items-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Your Score</p>
-          <span className={`text-5xl font-mono font-bold ${getScoreColor(feedback.score)}`}>
-            {feedback.score.toFixed(1)}
-          </span>
-          <span className="text-muted-foreground font-mono text-lg">/10</span>
-        </section>
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            {/* LEFT: ELO Rating (Primary Focus) */}
+            <div className="flex items-center gap-6">
+              {feedback.eloChange !== undefined && feedback.newEloRating && (
+                <>
+                  {/* ELO Rating - MAIN DISPLAY */}
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">ELO Rating</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-5xl font-bold text-primary">
+                        {feedback.newEloRating}
+                      </span>
+                      <div className="flex flex-col items-start">
+                        <span className={`text-lg font-bold ${
+                          feedback.eloChange > 0 ? 'text-success' : 
+                          feedback.eloChange < 0 ? 'text-destructive' : 
+                          'text-muted-foreground'
+                        }`}>
+                          {feedback.eloChange > 0 && '+'}{feedback.eloChange}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {feedback.newEloRating < 1000 && 'Entry'}
+                          {feedback.newEloRating >= 1000 && feedback.newEloRating < 1200 && 'Associate'}
+                          {feedback.newEloRating >= 1200 && feedback.newEloRating < 1400 && 'PM'}
+                          {feedback.newEloRating >= 1400 && feedback.newEloRating < 1600 && 'Senior PM'}
+                          {feedback.newEloRating >= 1600 && feedback.newEloRating < 1800 && 'Staff PM'}
+                          {feedback.newEloRating >= 1800 && feedback.newEloRating < 2000 && 'Principal PM'}
+                          {feedback.newEloRating >= 2000 && 'Legendary'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-{/* Score Section */}
-        <section className="bg-card border border-border p-6 flex flex-col items-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Your Score</p>
-          <span className={`text-5xl font-mono font-bold ${getScoreColor(feedback.score)}`}>
-            {feedback.score.toFixed(1)}
-          </span>
-          <span className="text-muted-foreground font-mono text-lg">/10</span>
-        </section>
+                  {/* Visual Divider */}
+                  <div className="h-16 w-px bg-border" />
+                </>
+              )}
 
-        {/* 🆕 NEW: ELO Change Display */}
-        {feedback?.eloChange !== undefined && feedback?.newEloRating && (
-          <section className="bg-card border border-border p-5">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">
-              Rating Update
-            </h3>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Change</p>
-                <p className={`text-3xl font-bold ${
-                  feedback.eloChange > 0 ? 'text-success' : 
-                  feedback.eloChange < 0 ? 'text-destructive' : 
-                  'text-muted-foreground'
-                }`}>
-                  {feedback.eloChange > 0 && '+'}{feedback.eloChange}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground mb-1">New Rating</p>
-                <p className="text-3xl font-bold text-primary">
-                  {feedback.newEloRating}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {feedback.newEloRating < 1000 && 'Entry Level PM'}
-                  {feedback.newEloRating >= 1000 && feedback.newEloRating < 1200 && 'Associate PM'}
-                  {feedback.newEloRating >= 1200 && feedback.newEloRating < 1400 && 'PM'}
-                  {feedback.newEloRating >= 1400 && feedback.newEloRating < 1600 && 'Senior PM'}
-                  {feedback.newEloRating >= 1600 && feedback.newEloRating < 1800 && 'Staff PM'}
-                  {feedback.newEloRating >= 1800 && feedback.newEloRating < 2000 && 'Principal PM'}
-                  {feedback.newEloRating >= 2000 && 'Legendary PM'}
-                </p>
+              {/* Answer Score - Secondary */}
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Answer Score</p>
+                <div className="flex items-baseline gap-1">
+                  <span className={`text-3xl font-bold ${getScoreColor(feedback.score)}`}>
+                    {feedback.score.toFixed(1)}
+                  </span>
+                  <span className="text-muted-foreground text-lg">/10</span>
+                </div>
               </div>
             </div>
+
+            {/* RIGHT: Quick Actions */}
+            <div className="flex gap-2">
+              {!showPushback && !pushbackResult && (
+                <Button
+                  onClick={() => setShowPushback(true)}
+                  size="sm"
+                  variant="outline"
+                >
+                  Contest Score
+                </Button>
+              )}
+              <Button onClick={() => navigate('/practice')} size="sm">
+                Next Question
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Pushback Section */}
+        {(showPushback || pushbackResult) && (
+          <section className="bg-card border border-border p-5 space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide">
+              {pushbackResult ? 'Pushback Result' : 'Contest Your Score'}
+            </h3>
+
+            {showPushback && !pushbackResult && (
+              <div className="space-y-3">
+                <textarea
+                  value={pushbackText}
+                  onChange={(e) => setPushbackText(e.target.value)}
+                  placeholder="Explain why you disagree. What did the evaluator miss? Be specific. (Min 100 words)"
+                  className="w-full min-h-[120px] p-3 bg-background border border-border rounded-md text-sm resize-none"
+                  disabled={pushbackLoading}
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    {pushbackText.length} / 500+ characters
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => { setShowPushback(false); setPushbackText(''); }}
+                      size="sm"
+                      variant="ghost"
+                      disabled={pushbackLoading}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handlePushback}
+                      size="sm"
+                      disabled={pushbackText.length < 500 || pushbackLoading}
+                    >
+                      {pushbackLoading ? (
+                        <><Loader2 className="w-4 h-4 animate-spin mr-2" />Evaluating...</>
+                      ) : (
+                        'Submit'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {pushbackResult && (
+              <div className={`p-4 rounded-md border ${
+                pushbackResult.verdict === 'FULLY_ADJUSTED' ? 'bg-success/10 border-success/30' :
+                pushbackResult.verdict === 'PARTIALLY_ADJUSTED' ? 'bg-warning/10 border-warning/30' :
+                'bg-destructive/10 border-destructive/30'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold">
+                    {pushbackResult.verdict === 'FULLY_ADJUSTED' && '✅ Score Fully Adjusted'}
+                    {pushbackResult.verdict === 'PARTIALLY_ADJUSTED' && '⚠️ Partially Adjusted'}
+                    {pushbackResult.verdict === 'UPHELD' && '❌ Score Upheld'}
+                  </p>
+                  {pushbackResult.newScore !== feedback.score && (
+                    <p className="text-lg font-bold">
+                      {feedback.score} → {pushbackResult.newScore}
+                    </p>
+                  )}
+                </div>
+                <p className="text-sm mb-2">{pushbackResult.reasoning}</p>
+                {pushbackResult.counterpoints.length > 0 && (
+                  <ul className="space-y-1 text-xs text-muted-foreground">
+                    {pushbackResult.counterpoints.map((point, i) => (
+                      <li key={i}>• {point}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </section>
         )}
 
-        {/* Feedback Cards - Two Column */}
-        <section className="grid md:grid-cols-2 gap-6">
-          {/* What You Did Well */}
-          <div className="bg-card border border-border p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-              What You Did Well
+        {/* Feedback - Strengths & Weaknesses in 2 columns */}
+        <section className="grid md:grid-cols-2 gap-4">
+          <div className="bg-card border border-border p-5 space-y-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide flex items-center gap-2">
+              <Check className="w-4 h-4 text-success" />
+              Strengths
             </h3>
             <ul className="space-y-2">
-              {feedback.strengths.map((strength, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm">
-                  <Check className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">
-                    {highlightFrameworks(strength)}
-                  </span>
+              {feedback.strengths.map((strength, i) => (
+                <li key={i} className="text-sm text-muted-foreground pl-6 relative">
+                  <span className="absolute left-0 text-success">✓</span>
+                  {highlightFrameworks(strength)}
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Where to Improve */}
-          <div className="bg-card border border-border p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-              Where to Improve
+          <div className="bg-card border border-border p-5 space-y-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide flex items-center gap-2">
+              <X className="w-4 h-4 text-destructive" />
+              Areas to Improve
             </h3>
             <ul className="space-y-2">
-              {feedback.weaknesses.map((weakness, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm">
-                  <X className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
-                  <span className="text-muted-foreground">
-                    {highlightFrameworks(weakness)}
-                  </span>
+              {feedback.weaknesses.map((weakness, i) => (
+                <li key={i} className="text-sm text-muted-foreground pl-6 relative">
+                  <span className="absolute left-0 text-destructive">✗</span>
+                  {highlightFrameworks(weakness)}
                 </li>
               ))}
             </ul>
@@ -221,43 +358,56 @@ const Feedback = () => {
         </section>
 
         {/* Detailed Feedback */}
-        <section className="bg-card border border-border p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Detailed Feedback
+        <section className="bg-card border border-border p-5">
+          <h3 className="text-sm font-semibold uppercase tracking-wide mb-2">
+            Actionable Advice
           </h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
             {highlightFrameworks(feedback.detailedFeedback)}
           </p>
         </section>
 
-        {/* Category Scores */}
-        <section className="bg-card border border-border p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            Category Breakdown
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(feedback.categoryScores).map(([category, score]) => (
-              <div key={category} className="text-center">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                  {category}
-                </p>
-                <span className={`text-xl font-mono font-bold ${getScoreColor(score)}`}>
-                  {score}
-                </span>
-              </div>
-            ))}
-          </div>
+        {/* Category Breakdown - Collapsible */}
+        <section className="bg-card border border-border p-5">
+          <button
+            onClick={() => setShowCategoryBreakdown(!showCategoryBreakdown)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <h3 className="text-sm font-semibold uppercase tracking-wide">
+              Category Breakdown
+            </h3>
+            {showCategoryBreakdown ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </button>
+          
+          {showCategoryBreakdown && (
+            <div className="grid grid-cols-4 gap-4 mt-3 pt-3 border-t border-border">
+              {Object.entries(feedback.categoryScores).map(([category, score]) => (
+                <div key={category} className="text-center">
+                  <p className="text-xs text-muted-foreground uppercase mb-1">
+                    {category}
+                  </p>
+                  <span className={`text-2xl font-bold ${getScoreColor(score)}`}>
+                    {score}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Example Answer Section */}
-        <section className="bg-card border border-border p-5 space-y-4">
+        <section className="bg-card border border-border p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+              <h3 className="text-sm font-semibold uppercase tracking-wide">
                 Example 9/10 Answer
               </h3>
               <p className="text-xs text-muted-foreground mt-1">
-                See how a senior PM would answer this
+                See how a senior PM would answer
               </p>
             </div>
             {!showExample && (
@@ -269,21 +419,14 @@ const Feedback = () => {
                 className="gap-2"
               >
                 {loadingExample ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating...
-                  </>
+                  <><Loader2 className="w-4 h-4 animate-spin" />Generating...</>
                 ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Show Example
-                  </>
+                  <><Sparkles className="w-4 h-4" />Show Example</>
                 )}
               </Button>
             )}
           </div>
 
-          {/* 🆕 NEW: Company Selector (only show before example is generated) */}
           {!showExample && (
             <CompanySelector
               selected={selectedCompany}
@@ -293,45 +436,24 @@ const Feedback = () => {
             />
           )}
 
-          {/* Example Answer Display */}
           {showExample && exampleAnswer && (
-            <div className="space-y-3">
-              <div className="bg-secondary/30 border border-border rounded-md p-4">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                  {highlightFrameworks(exampleAnswer)}
-                </p>
-              </div>
-              <Button
-                onClick={() => setShowExample(false)}
-                size="sm"
-                variant="ghost"
-                className="gap-2"
-              >
-                <ChevronUp className="w-4 h-4" />
-                Hide Example
-              </Button>
+            <div className="bg-secondary/30 border border-border rounded-md p-4">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                {highlightFrameworks(exampleAnswer)}
+              </p>
             </div>
           )}
         </section>
 
-        {/* Learning Tip */}
-        <section className="bg-secondary/20 border border-border p-5">
-          <p className="text-sm text-muted-foreground">
-            💡 <strong className="text-foreground">Tip:</strong> Click any underlined PM term above (like HEART, RICE, or NPS) to learn what it means!
-          </p>
-        </section>
-
-        {/* Action Buttons */}
-        <section className="flex gap-3 pb-6">
-          <Button variant="default" size="sm" onClick={handleNextQuestion}>
+        {/* Bottom Actions */}
+        <div className="flex gap-3">
+          <Button onClick={() => navigate('/practice')} size="sm">
             Next Question
           </Button>
           <Button variant="secondary" size="sm" asChild>
-            <Link to="/">
-              Back to Dashboard
-            </Link>
+            <Link to="/">Dashboard</Link>
           </Button>
-        </section>
+        </div>
       </div>
     </Layout>
   );

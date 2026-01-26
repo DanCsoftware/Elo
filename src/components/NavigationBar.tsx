@@ -1,94 +1,80 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import alpacaMascot from '@/assets/alpaca-mascot.png';
 
 const NavigationBar = () => {
-  const location = useLocation();
-  const { user, signInWithGoogle, signOut, loading } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
-  const links = [
-    { to: '/', label: 'Overview' },
-    { to: '/practice', label: 'Practice' },
-    { to: '/history', label: 'History' },
-  ];
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   return (
-    <header className="sticky top-0 z-50 bg-card border-b border-border">
+    <nav className="border-b border-border bg-card">
       <div className="container max-w-5xl mx-auto px-4">
-        <div className="flex items-center justify-between h-12">
-          {/* Left side - Logo and Nav */}
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center gap-2 mr-8">
-              <img 
-                src={alpacaMascot} 
-                alt="Alpa mascot" 
-                className="w-7 h-7 object-contain transition-transform duration-300 hover:rotate-12 hover:scale-110" 
-              />
-              <span className="text-sm font-semibold text-foreground">Alpa</span>
-            </Link>
-            
-            <nav className="flex items-center gap-1">
-              {links.map((link) => {
-                const isActive = location.pathname === link.to || 
-                  (link.to === '/practice' && location.pathname === '/feedback');
-                
-                return (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className={`px-3 py-1.5 text-sm transition-colors ${
-                      isActive
-                        ? 'text-foreground bg-secondary'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+        <div className="flex items-center justify-between h-14">
+          {/* Logo - ELO with Walking Duck */}
+          <Link to="/" className="flex items-center gap-3">
+            {/* Walking Duck GIF */}
+            <img 
+              src="https://media.tenor.com/KuBAp-1E3GgAAAAm/pato-aaa.webp" 
+              alt="Duck mascot"
+              className="w-8 h-8 object-contain"
+            />
+            {/* ELO Text - Technical Font */}
+            <span className="text-2xl font-bold tracking-tight text-foreground" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+              ELO
+            </span>
+          </Link>
 
-          {/* Right side - Auth */}
-          <div className="flex items-center gap-3">
-            {loading ? (
-              <div className="text-xs text-muted-foreground">Loading...</div>
-            ) : user ? (
-              <>
+          {/* Navigation */}
+          {user && (
+            <div className="flex items-center gap-6">
+              <Link
+                to="/"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Overview
+              </Link>
+              <Link
+                to="/practice"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Practice
+              </Link>
+              <Link
+                to="/history"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                History
+              </Link>
+
+              {/* User Menu */}
+              <div className="flex items-center gap-3 ml-3 pl-3 border-l border-border">
                 <div className="flex items-center gap-2">
-                  <img 
-                    src={user.user_metadata?.avatar_url} 
-                    alt={user.user_metadata?.name || 'User'} 
-                    className="w-6 h-6 rounded-full"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    {user.user_metadata?.name || user.email}
-                  </span>
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-sm font-semibold text-primary">
+                      {user.email?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="text-sm text-foreground">{user.email?.split('@')[0]}</span>
                 </div>
-                <Button 
-                  onClick={signOut} 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
-                  className="h-7 text-xs"
+                  onClick={handleSignOut}
+                  className="text-xs"
                 >
                   Sign Out
                 </Button>
-              </>
-            ) : (
-              <Button 
-                onClick={signInWithGoogle}
-                variant="default"
-                size="sm"
-                className="h-7 text-xs"
-              >
-                Sign In
-              </Button>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </header>
+    </nav>
   );
 };
 

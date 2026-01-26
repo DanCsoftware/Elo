@@ -10,8 +10,8 @@ interface EvaluationRequest {
   answer: string;
   category: string;
   difficulty: string;
-  userEloRating?: number; // 🆕 NEW: User's current ELO
-  questionEloDifficulty?: number; // 🆕 NEW: Question's ELO difficulty
+  userEloRating?: number;
+  questionEloDifficulty?: number;
 }
 
 interface FeedbackResult {
@@ -25,54 +25,38 @@ interface FeedbackResult {
     prioritization: number;
     design: number;
   };
-  skillScores?: { [key: string]: number }; // 🆕 NEW: 14 skill scores
-  eloChange?: number; // 🆕 NEW: Rating change (+/- points)
-  newEloRating?: number; // 🆕 NEW: Updated rating
+  skillScores?: { [key: string]: number };
+  eloChange?: number;
+  newEloRating?: number;
 }
 
-// 🆕 UPDATED: More aggressive ELO calculation
+// ELO calculation
 function calculateEloChange(
   currentRating: number,
   questionDifficulty: number,
   scoreOutOf10: number,
-  kFactor: number = 40 // Increased from 32 for bigger swings
+  kFactor: number = 40
 ): { newRating: number; change: number } {
-  // Expected score based on rating difference
   const expectedScore = 1 / (1 + Math.pow(10, (questionDifficulty - currentRating) / 400));
-  
-  // Actual score (normalized to 0-1)
   const actualScore = scoreOutOf10 / 10;
   
-  // 🆕 NEW: Apply multiplier for extreme performances
   let adjustedKFactor = kFactor;
   
-  // Really bad answer (0-3/10)? Punish harder
   if (scoreOutOf10 < 4) {
-    adjustedKFactor = kFactor * 1.5; // 50% more penalty
-  }
-  // Excellent answer (9-10/10)? Reward more
-  else if (scoreOutOf10 >= 9) {
-    adjustedKFactor = kFactor * 1.25; // 25% more reward
+    adjustedKFactor = kFactor * 1.5;
+  } else if (scoreOutOf10 >= 9) {
+    adjustedKFactor = kFactor * 1.25;
   }
   
-  // Calculate change
   const change = Math.round(adjustedKFactor * (actualScore - expectedScore));
-  
-  // Apply change with floor/ceiling
   const newRating = Math.max(800, Math.min(2200, currentRating + change));
   
-  console.log(`📊 ELO Calculation:
-    Current: ${currentRating}
-    Question Difficulty: ${questionDifficulty}
-    Score: ${scoreOutOf10}/10
-    Expected: ${(expectedScore * 10).toFixed(1)}/10
-    Change: ${change > 0 ? '+' : ''}${change}
-    New: ${newRating}`);
+  console.log(`📊 ELO: ${currentRating} → ${newRating} (${change > 0 ? '+' : ''}${change})`);
   
   return { newRating, change };
 }
 
-// 🆕 NEW: Get company-specific context
+// Company contexts
 function getCompanyContext(company: string) {
   const contexts: { [key: string]: any } = {
     google: {
@@ -170,7 +154,7 @@ function getCompanyContext(company: string) {
   return contexts[company] || contexts['google'];
 }
 
-// 🆕 UPDATED: Function to generate example answers
+// Generate example answers
 async function generateExampleAnswer(
   question: string,
   category: string,
@@ -210,22 +194,15 @@ Answer as a ${companyContext.name} PM would think through this problem:`;
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: examplePrompt }] }],
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 2048,
-        },
+        generationConfig: { temperature: 0.8, maxOutputTokens: 2048 },
       }),
     }
   );
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Failed to generate example:', errorText);
     throw new Error('Failed to generate example answer');
   }
 
@@ -242,7 +219,6 @@ serve(async (req) => {
     const GEMINI_API_KEY = Deno.env.get('VITE_GEMINI_API_KEY');
     
     if (!GEMINI_API_KEY) {
-      console.error('VITE_GEMINI_API_KEY is not configured');
       return new Response(
         JSON.stringify({ error: 'Gemini API key not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -250,21 +226,99 @@ serve(async (req) => {
     }
 
     const url = new URL(req.url);
-    const isExampleRequest = url.searchParams.get('type') === 'example';
+    const requestType = url.searchParams.get('type');
     const company = url.searchParams.get('company') || 'google';
 
-    const { 
-      question, 
-      answer, 
-      category, 
-      difficulty,
-      userEloRating,
-      questionEloDifficulty
-    }: EvaluationRequest = await req.json();
+    const requestBody = await req.json();
+
+    // 🆕 NEW: Handle pushback evaluation
+    if (requestType === 'pushback') {
+      console.log('Evaluating pushback...');
+      
+      const { question, originalAnswer, originalScore, originalFeedback, pushbackText } = requestBody;
+
+      const pushbackPrompt = `You are a Senior PM at Google evaluating another PM's pushback on their score.
+
+ORIGINAL QUESTION: ${question}
+THEIR ANSWER: ${originalAnswer}
+ORIGINAL SCORE: ${originalScore}/10
+ORIGINAL FEEDBACK: ${JSON.stringify(originalFeedback)}
+
+THEIR PUSHBACK:
+${pushbackText}
+
+Your job: Evaluate their pushback like a peer PM would in a healthy debate.
+
+CRITICAL RULES:
+1. DO NOT automatically agree. Be skeptical but fair.
+2. If they make valid points you missed, acknowledge it and adjust score.
+3. If they're wrong, explain WHY with specific examples from their answer.
+4. If they're partially right, give partial credit.
+5. Challenge weak arguments. Don't let them off easy.
+6. Maintain professional tone - this is peer debate, not adversarial.
+
+RESPONSE FORMAT (Return ONLY valid JSON, no markdown):
+{
+  "verdict": "UPHELD" | "PARTIALLY_ADJUSTED" | "FULLY_ADJUSTED",
+  "newScore": <number 0-10>,
+  "reasoning": "<2-3 sentences explaining your decision>",
+  "counterpoints": [
+    "<Specific point they made and your response>",
+    "<Another point>"
+  ],
+  "finalThoughts": "<1 sentence - what they should focus on next>"
+}
+
+EXAMPLES:
+
+**UPHELD:**
+"You claim you addressed metrics, but saying 'track engagement' isn't specific. Which engagement metric? What's the target? Generic metrics don't count. Score stands."
+
+**PARTIALLY_ADJUSTED:**
+"Fair point - you did mention 'DAU increase of 10%' which I missed. However, you didn't define success for the secondary segment. Adjusting from 5.5 to 6.5."
+
+**FULLY_ADJUSTED:**
+"You're right. You clearly outlined metrics (DAU, retention, NPS), trade-offs (speed vs quality), and segments. I was too harsh. Adjusting to 7.5."
+
+Be specific. Be fair. Be rigorous.`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: pushbackPrompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to evaluate pushback');
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const jsonMatch = text?.match(/\{[\s\S]*\}/);
+      
+      if (!jsonMatch) {
+        throw new Error('Could not parse pushback response');
+      }
+
+      const result = JSON.parse(jsonMatch[0]);
+      console.log('Pushback evaluated:', result.verdict);
+      
+      return new Response(
+        JSON.stringify(result),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Handle example answer generation
-    if (isExampleRequest) {
-      console.log(`Generating example answer for ${company}, category: ${category}, difficulty: ${difficulty}`);
+    if (requestType === 'example') {
+      const { question, category, difficulty } = requestBody;
+      console.log(`Generating example for ${company}`);
       
       const exampleAnswer = await generateExampleAnswer(
         question,
@@ -274,20 +328,19 @@ serve(async (req) => {
         GEMINI_API_KEY
       );
 
-      console.log('Example answer generated successfully');
-
       return new Response(
         JSON.stringify({ exampleAnswer }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // ===== EVALUATION LOGIC WITH 14 SKILLS =====
+    // ===== NORMAL EVALUATION =====
+    
+    const { question, answer, category, difficulty, userEloRating, questionEloDifficulty } = requestBody;
 
-    // Validate input
     if (!question || question.length > 2000) {
       return new Response(
-        JSON.stringify({ error: 'Invalid question length (max 2000 chars)' }),
+        JSON.stringify({ error: 'Invalid question length' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -299,197 +352,89 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Evaluating answer for category: ${category}, difficulty: ${difficulty}`);
+    const prompt = `You are a senior product management interviewer at Google with 10+ years of experience evaluating PM candidates.
 
-    // 🆕 UPDATED PROMPT: Evaluate against 14 skills
-    const prompt = `You are a senior product management interviewer at Google with 10+ years of experience evaluating PM candidates. Your goal is to provide honest, calibrated feedback that helps candidates improve their PM thinking.
-
-QUESTION CONTEXT:
-Question: ${question}
-Category: ${category}
-Difficulty: ${difficulty}
+QUESTION: ${question}
+CATEGORY: ${category}
+DIFFICULTY: ${difficulty}
 
 CANDIDATE'S ANSWER:
 ${answer}
 
----
-
 EVALUATION FRAMEWORK - 14 PM SKILLS:
 
-**CORE THINKING SKILLS:**
-1. **Problem Framing** - Defining the right problem to solve, clarifying assumptions, identifying constraints
-2. **User Empathy** - Understanding user needs, pain points, segmentation, user research
-3. **Metrics Definition** - Defining success criteria, KPIs, measurement frameworks (HEART, AARRR)
-4. **Trade-off Analysis** - Evaluating costs/benefits, opportunity cost, "if we do X, we sacrifice Y"
-5. **Prioritization** - RICE, ICE, Impact/Effort, sequencing decisions
-6. **Strategic Thinking** - Long-term vision, positioning, market dynamics, competitive landscape
+**CORE THINKING:**
+1. Problem Framing 2. User Empathy 3. Metrics Definition 4. Trade-off Analysis 5. Prioritization 6. Strategic Thinking
 
-**EXECUTION SKILLS:**
-7. **Stakeholder Management** - Aligning teams, executives, cross-functional collaboration
-8. **Communication** - Clear articulation, storytelling, conciseness
-9. **Technical Judgment** - Understanding feasibility, constraints, technical trade-offs
+**EXECUTION:**
+7. Stakeholder Management 8. Communication 9. Technical Judgment
 
-**ADVANCED SKILLS:**
-10. **Ambiguity Navigation** - Thriving with incomplete information, comfort with uncertainty
-11. **Systems Thinking** - Understanding second-order effects, interconnections, unintended consequences
-12. **Market Sense** - Competitive positioning, market timing, TAM understanding
-13. **Experimentation** - A/B testing, hypothesis-driven thinking, learning loops
-14. **Risk Assessment** - Identifying and mitigating risks, reversibility analysis
+**ADVANCED:**
+10. Ambiguity Navigation 11. Systems Thinking 12. Market Sense 13. Experimentation 14. Risk Assessment
 
----
-
-SCORE CALIBRATION (Use full 1-10 range):
-
-**9-10: Exceptional (Top 5%)**
-- Leads with clear judgment
-- Non-obvious core insight
-- Creative alternatives
-- Specific metrics with rationale
-- Sounds like senior PM
-
-**7-8: Strong (Top 25%)**
-- Clear structure
-- Trade-off thinking
-- Specific metrics
-- Competent but conventional
-
-**5-6: Adequate (Middle 50%)**
-- Basic structure
-- Generic metrics OR no metrics
-- Surface-level
-
-**3-4: Weak (Bottom 25%)**
-- Minimal structure
-- No metrics
-- Doesn't demonstrate PM thinking
-
-**1-2: Very Weak (Bottom 5%)**
-- Doesn't answer question
-- Test/joke answers
+SCORE CALIBRATION:
+**9-10:** Exceptional - Non-obvious insight, specific metrics, creative alternatives
+**7-8:** Strong - Clear structure, trade-offs, specific metrics
+**5-6:** Adequate - Basic structure, generic or missing metrics
+**3-4:** Weak - Minimal structure, no metrics, no PM thinking
+**1-2:** Very Weak - Test answers, doesn't address question, under 30 words
 
 CRITICAL RULES:
-- No specific metrics = max 5/10
-- No trade-offs = max 6/10
-- Use decimals (6.5, 7.5)
+- "This is a test" = 1/10
+- Under 30 words = MAX 3/10
+- No specific metrics = MAX 5/10
+- No trade-offs = MAX 6/10
 
----
-
-OUTPUT FORMAT (Return ONLY valid JSON, no markdown):
-
+OUTPUT (JSON only, no markdown):
 {
-  "score": <overall score 0-10>,
-  "strengths": [
-    "<Specific strength>",
-    "<Another strength>",
-    "<Third strength>"
-  ],
-  "weaknesses": [
-    "<Specific gap>",
-    "<Another gap>",
-    "<Third gap>"
-  ],
-  "detailedFeedback": "<2-3 sentences of actionable advice>",
-  "categoryScores": {
-    "strategy": <1-10>,
-    "metrics": <1-10>,
-    "prioritization": <1-10>,
-    "design": <1-10>
-  },
-  "skillScores": {
-    "problem_framing": <1-10>,
-    "user_empathy": <1-10>,
-    "metrics_definition": <1-10>,
-    "tradeoff_analysis": <1-10>,
-    "prioritization": <1-10>,
-    "strategic_thinking": <1-10>,
-    "stakeholder_mgmt": <1-10>,
-    "communication": <1-10>,
-    "technical_judgment": <1-10>,
-    "ambiguity_navigation": <1-10>,
-    "systems_thinking": <1-10>,
-    "market_sense": <1-10>,
-    "experimentation": <1-10>,
-    "risk_assessment": <1-10>
-  }
-}
+  "score": <0-10>,
+  "strengths": ["<specific>", "<specific>", "<specific>"],
+  "weaknesses": ["<specific>", "<specific>", "<specific>"],
+  "detailedFeedback": "<2-3 sentences>",
+  "categoryScores": {"strategy": <1-10>, "metrics": <1-10>, "prioritization": <1-10>, "design": <1-10>},
+  "skillScores": {"problem_framing": <1-10>, "user_empathy": <1-10>, "metrics_definition": <1-10>, "tradeoff_analysis": <1-10>, "prioritization": <1-10>, "strategic_thinking": <1-10>, "stakeholder_mgmt": <1-10>, "communication": <1-10>, "technical_judgment": <1-10>, "ambiguity_navigation": <1-10>, "systems_thinking": <1-10>, "market_sense": <1-10>, "experimentation": <1-10>, "risk_assessment": <1-10>}
+}`;
 
-Evaluate which skills are most relevant to this question and score them accordingly. Skills not heavily tested can be scored 0 or omitted.`;
-
-    // Call Gemini API
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1024,
-          },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
         }),
       }
     );
 
     if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error('Gemini API error:', geminiResponse.status, errorText);
-      return new Response(
-        JSON.stringify({ error: 'Failed to evaluate answer with AI' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      throw new Error('Failed to evaluate answer');
     }
 
     const geminiData = await geminiResponse.json();
-    console.log('Gemini response received');
-
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!text) {
-      console.error('No text in Gemini response:', geminiData);
-      return new Response(
-        JSON.stringify({ error: 'Invalid AI response' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      throw new Error('Invalid AI response');
     }
 
-    // Extract JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error('No JSON found in response:', text);
-      return new Response(
-        JSON.stringify({ error: 'Could not parse AI response' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      throw new Error('Could not parse AI response');
     }
 
     const feedback: FeedbackResult = JSON.parse(jsonMatch[0]);
 
-    if (!feedback.score || !feedback.strengths || !feedback.weaknesses) {
-      console.error('Invalid feedback structure:', feedback);
-      return new Response(
-        JSON.stringify({ error: 'Invalid feedback structure from AI' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!feedback.score) {
+      throw new Error('Invalid feedback structure');
     }
 
-    // 🆕 NEW: Calculate ELO change if ratings provided
+    // Calculate ELO
     if (userEloRating && questionEloDifficulty) {
-      const eloResult = calculateEloChange(
-        userEloRating,
-        questionEloDifficulty,
-        feedback.score
-      );
-      
+      const eloResult = calculateEloChange(userEloRating, questionEloDifficulty, feedback.score);
       feedback.eloChange = eloResult.change;
       feedback.newEloRating = eloResult.newRating;
-      
-      console.log(`ELO: ${userEloRating} → ${eloResult.newRating} (${eloResult.change > 0 ? '+' : ''}${eloResult.change})`);
     }
-
-    console.log('Evaluation complete, score:', feedback.score);
 
     return new Response(
       JSON.stringify(feedback),
