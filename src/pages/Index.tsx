@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 import StatCard from '@/components/StatCard';
 import SkillBar from '@/components/SkillBar';
@@ -6,13 +7,38 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserStats } from '@/hooks/useUserStats';
 import { useGrowthAnalysis } from '@/hooks/useGrowthAnalysis';
+import { useRatingPercentile } from '@/hooks/useRatingPercentile';
+import { RatingChart } from '@/components/RatingChart';
 import { Loader2 } from 'lucide-react';
 import { FocusAreaCard } from '@/components/FocusAreaCard';
+import { supabase } from '@/lib/supabase';
 
 const Index = () => {
   const { user, signInWithGoogle } = useAuth();
   const { stats, loading } = useUserStats();
   const { growthAreas, loading: growthLoading } = useGrowthAnalysis();
+  const { percentile, totalUsers, loading: percentileLoading } = useRatingPercentile(stats?.eloRating || 1200);
+  
+  const [sessions, setSessions] = useState<any[]>([]);
+
+  // Fetch sessions for rating chart
+  useEffect(() => {
+    if (!user) return;
+
+    async function fetchSessions() {
+      const { data, error } = await supabase
+        .from('user_sessions')
+        .select('created_at, elo_after, elo_change')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+      if (!error && data) {
+        setSessions(data);
+      }
+    }
+
+    fetchSessions();
+  }, [user]);
 
   // Show sign-in prompt if not authenticated
   if (!user) {
@@ -20,7 +46,7 @@ const Index = () => {
       <Layout>
         <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
           <div>
-            <h1 className="text-3xl font-bold mb-3">Welcome to Alpa</h1>
+            <h1 className="text-3xl font-bold mb-3">Welcome to Elo</h1>
             <p className="text-muted-foreground text-lg">
               Practice PM interviews with AI-powered feedback
             </p>
@@ -55,7 +81,7 @@ const Index = () => {
   // Convert category scores to SkillBar format
   const skillProgress = Object.entries(stats?.categoryScores || {}).map(([category, score]) => ({
     name: categoryDisplayNames[category] || category,
-    percentage: Math.round(score * 100),
+    percentage: Math.round(score * 10),
   }));
 
   return (
@@ -90,7 +116,29 @@ const Index = () => {
           </div>
         </section>
 
-        {/* 🆕 NEW: Interactive Focus Areas with FocusAreaCard */}
+        {/* Rating Journey - NEW! */}
+        {stats && stats.totalSolved > 0 && (
+          <section className="bg-card border border-border p-5 space-y-4">
+
+          {/* Percentile Badge */}
+          {!percentileLoading && percentile !== null && (
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg">
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="text-sm font-semibold text-primary">
+                Top {percentile}% of {totalUsers} users
+              </span>
+            </div>
+          )}
+
+            {/* Rating Chart */}
+            <RatingChart 
+              sessions={sessions}
+              currentRating={stats.eloRating}
+            />
+          </section>
+        )}
+
+        {/* Focus Areas */}
         {!growthLoading && growthAreas.length > 0 && stats && stats.totalSolved >= 3 && (
           <section className="space-y-3">
             <div className="flex items-center justify-between">
@@ -118,39 +166,40 @@ const Index = () => {
           </section>
         )}
         
-{/* ELO Rating Display */}
-{stats && (
-  <section className="bg-card border border-border p-5">
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide">
-        Your PM Rating
-      </h2>
-      <span className="text-xs text-muted-foreground">
-        Elo System
-      </span>
-    </div>
-    
-    <div className="flex items-center gap-4">
-      <div className="text-5xl font-bold text-primary">
-        {stats.eloRating}
-      </div>
-      <div className="flex-1">
-        <p className="text-sm font-medium mb-1">
-          {stats.eloRating < 1000 && 'Entry Level PM'}
-          {stats.eloRating >= 1000 && stats.eloRating < 1200 && 'Associate PM'}
-          {stats.eloRating >= 1200 && stats.eloRating < 1400 && 'PM'}
-          {stats.eloRating >= 1400 && stats.eloRating < 1600 && 'Senior PM'}
-          {stats.eloRating >= 1600 && stats.eloRating < 1800 && 'Staff PM'}
-          {stats.eloRating >= 1800 && stats.eloRating < 2000 && 'Principal PM'}
-          {stats.eloRating >= 2000 && 'Legendary PM'}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Practice to increase your rating
-        </p>
-      </div>
-    </div>
-  </section>
-)}
+        {/* Elo Rating Display */}
+        {stats && (
+          <section className="bg-card border border-border p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold uppercase tracking-wide">
+                Your PM Rating
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                Elo System
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="text-5xl font-bold text-primary">
+                {stats.eloRating}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium mb-1">
+                  {stats.eloRating < 1000 && 'Entry Level PM'}
+                  {stats.eloRating >= 1000 && stats.eloRating < 1200 && 'Associate PM'}
+                  {stats.eloRating >= 1200 && stats.eloRating < 1400 && 'PM'}
+                  {stats.eloRating >= 1400 && stats.eloRating < 1600 && 'Senior PM'}
+                  {stats.eloRating >= 1600 && stats.eloRating < 1800 && 'Staff PM'}
+                  {stats.eloRating >= 1800 && stats.eloRating < 2000 && 'Principal PM'}
+                  {stats.eloRating >= 2000 && 'Legendary PM'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Practice to increase your rating
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Category Performance */}
         <section className="bg-card border border-border p-5 space-y-4">
           <div className="flex items-center justify-between">

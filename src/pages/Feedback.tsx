@@ -283,7 +283,7 @@ const Feedback = () => {
         {(showPushback || pushbackResult) && (
           <section className="bg-card border border-border p-5 space-y-3">
             <h3 className="text-sm font-semibold uppercase tracking-wide">
-              {pushbackResult ? 'Pushback Result' : 'Contest Your Score'}
+              {pushbackResult ? 'Pushback Result' : 'Pushback!'}
             </h3>
 
             {showPushback && !pushbackResult && (
@@ -316,7 +316,7 @@ const Feedback = () => {
                       {pushbackLoading ? (
                         <><Loader2 className="w-4 h-4 animate-spin mr-2" />Evaluating...</>
                       ) : (
-                        'Submit'
+                        'Push Back'
                       )}
                     </Button>
                   </div>
