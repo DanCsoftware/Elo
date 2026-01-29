@@ -125,7 +125,11 @@ Generate the answer now in plain text (no JSON, no markdown):`;
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: examplePrompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+            generationConfig: { 
+              temperature: 0.7, 
+              maxOutputTokens: 8192,
+              responseMimeType: "text/plain"
+            },
           }),
         }
       );
@@ -160,13 +164,13 @@ PUSHBACK: ${pushbackText}
 
 Be EXTREMELY skeptical. Most pushbacks are wrong. Only adjust if they provide concrete evidence.
 
-Return ONLY valid JSON:
+Return ONLY valid JSON (be CONCISE - max 10 words per field):
 {
   "verdict": "UPHELD" | "PARTIALLY_ADJUSTED" | "FULLY_ADJUSTED",
   "newScore": <number>,
-  "reasoning": "<explanation>",
-  "counterpoints": ["<point 1>", "<point 2>"],
-  "finalThoughts": "<advice>"
+  "reasoning": "<max 80 words>",
+  "counterpoints": ["<max 40 words>", "<max 40 words>"],
+  "finalThoughts": "<max 40 words>"
 }`;
 
       const response = await fetch(
@@ -176,7 +180,11 @@ Return ONLY valid JSON:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: pushbackPrompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+            generationConfig: { 
+              temperature: 0.7, 
+              maxOutputTokens: 8192,
+              responseMimeType: "application/json"
+            },
           }),
         }
       );
@@ -189,13 +197,15 @@ Return ONLY valid JSON:
 
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      const jsonMatch = text?.match(/\{[\s\S]*\}/);
       
-      if (!jsonMatch) {
-        throw new Error('Could not parse pushback response');
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        const jsonMatch = text?.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error('Could not parse pushback response');
+        result = JSON.parse(jsonMatch[0]);
       }
-
-      const result = JSON.parse(jsonMatch[0]);
       
       return new Response(
         JSON.stringify(result),
@@ -220,7 +230,7 @@ Return ONLY valid JSON:
       );
     }
 
-    const prompt = `You are a senior PM interviewer at Google with 10+ years experience.
+const prompt = `You are an ELITE PM interviewer (ex-Google L7, 15+ years experience) known for RIGOROUS evaluation that develops world-class product leaders.
 
 QUESTION: ${question}
 CATEGORY: ${category}
@@ -229,31 +239,64 @@ DIFFICULTY: ${difficulty}
 CANDIDATE'S ANSWER:
 ${answer}
 
-EVALUATION - 14 PM SKILLS:
-1. Problem Framing 2. User Empathy 3. Metrics Definition 4. Trade-off Analysis 5. Prioritization 6. Strategic Thinking 7. Stakeholder Management 8. Communication 9. Technical Judgment 10. Ambiguity Navigation 11. Systems Thinking 12. Market Sense 13. Experimentation 14. Risk Assessment
+YOUR EVALUATION STANDARDS (DIFFERENTIATED FROM CHATGPT):
 
-SCORE CALIBRATION (use decimals: 6.2, 7.5, 8.3):
-9.0-10.0: Exceptional (Top 5%)
-7.0-8.9: Strong (Top 25%)
-5.0-6.9: Adequate (Middle 50%)
-3.0-4.9: Weak (Bottom 25%)
-1.0-2.9: Very Weak (Bottom 5%)
+**14 PM SKILLS - DEEP EVALUATION:**
+1. Problem Framing: Did they reframe the problem? Challenge assumptions? Identify root cause vs symptom?
+2. User Empathy: Specific user pain points? Segmentation? Jobs-to-be-done thinking?
+3. Metrics Definition: Leading vs lagging indicators? Counter-metrics? Baseline numbers?
+4. Trade-off Analysis: Explicit costs? Opportunity cost quantified? What are we NOT doing?
+5. Prioritization: Clear ranking with reasoning? Impact/effort scoring? Sequencing logic?
+6. Strategic Thinking: Long-term implications? Competitive positioning? Ecosystem effects?
+7. Stakeholder Management: Cross-functional dependencies? Communication plan? Objection handling?
+8. Communication: Structured thinking? Executive summary? Logical flow?
+9. Technical Judgment: Feasibility assessment? Scalability considerations? Technical constraints?
+10. Ambiguity Navigation: Handled missing info? Made assumptions explicit? Probabilistic thinking?
+11. Systems Thinking: Second-order effects? Feedback loops? Unintended consequences?
+12. Market Sense: Competitive dynamics? Market timing? Industry trends?
+13. Experimentation: Hypothesis-driven? A/B test design? Statistical rigor?
+14. Risk Assessment: What could go wrong? Mitigation strategies? Kill criteria?
 
-CRITICAL RULES:
-- "This is a test" = 1/10
-- Under 30 words = MAX 3/10
-- No specific metrics = MAX 5/10
-- No trade-offs = MAX 6/10
+**UNIQUE ELO STANDARDS (NOT FOUND IN CHATGPT):**
+- Quantification Requirement: Every claim needs numbers (market size, conversion rates, timelines)
+- Framework Naming: Must cite specific frameworks by name (RICE, HEART, Kano, etc.)
+- Contrarian Thinking: Do they challenge the premise? Question hidden assumptions?
+- Operator Mindset: Talk about implementation, not just strategy
+- Failure Modes: What are the top 3 ways this could fail?
 
-Return ONLY valid JSON (no markdown):
+**HARSH SCORING CALIBRATION (use decimals for precision):**
+9.5-10.0: Principal/Staff PM level - Would teach this internally
+9.0-9.4: Senior/Lead PM - Reference answer quality
+8.0-8.9: Strong PM - Detailed, quantified, demonstrates expertise
+7.0-7.9: Solid PM - Good structure, some gaps in depth
+6.0-6.9: Junior PM - Surface-level, missing frameworks
+5.0-5.9: Associate PM - Basic understanding, major gaps
+4.0-4.9: Needs coaching - Misses key concepts
+3.0-3.9: Not ready - Fundamental misunderstandings
+1.0-2.9: Test answer or incoherent
+
+**AUTOMATIC SCORE CAPS (STRICTLY ENFORCED):**
+- "This is a test" or placeholder text = 1.0 (instant fail)
+- Under 50 words = MAX 3.0 (insufficient depth)
+- No specific metrics or numbers = MAX 4.5 (lacks rigor)
+- No trade-offs mentioned = MAX 5.5 (shallow analysis)
+- No frameworks cited by name = MAX 6.5 (generic thinking)
+- No prioritization or ranking = MAX 6.0 (lack of judgment)
+- Doesn't question assumptions = MAX 7.0 (accepts premise blindly)
+
+**OUTPUT FORMAT (BE CONCISE - Use SHORT, PUNCHY Feedback):**
+Return ONLY valid JSON. Each strength/weakness must be under 100 characters. Be direct and brutal.
+
 {
-  "score": <0-10 with decimals>,
-  "strengths": ["<specific quote> - <why good>", "<quote>", "<quote>"],
-  "weaknesses": ["<what's missing> - <evidence>", "<gap>", "<gap>"],
-  "detailedFeedback": "<2-3 sentences with SPECIFIC quotes>",
+  "score": <0-10 with one decimal, e.g. 6.8>,
+  "strengths": ["<80 char max>", "<80 char max>", "<80 char max>"],
+  "weaknesses": ["<80 char max>", "<80 char max>", "<80 char max>"],
+  "detailedFeedback": "<150 char max - most critical insight>",
   "categoryScores": {"strategy": <1-10>, "metrics": <1-10>, "prioritization": <1-10>, "design": <1-10>},
   "skillScores": {"problem_framing": <1-10>, "user_empathy": <1-10>, "metrics_definition": <1-10>, "tradeoff_analysis": <1-10>, "prioritization": <1-10>, "strategic_thinking": <1-10>, "stakeholder_mgmt": <1-10>, "communication": <1-10>, "technical_judgment": <1-10>, "ambiguity_navigation": <1-10>, "systems_thinking": <1-10>, "market_sense": <1-10>, "experimentation": <1-10>, "risk_assessment": <1-10>}
-}`;
+}
+
+REMEMBER: This evaluation develops SKILLS, not interview tactics. Be rigorous. Be harsh. Be specific.`;
 
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -262,7 +305,11 @@ Return ONLY valid JSON (no markdown):
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+          generationConfig: { 
+            temperature: 0.7, 
+            maxOutputTokens: 8192,
+            responseMimeType: "application/json"
+          },
         }),
       }
     );
@@ -277,20 +324,48 @@ Return ONLY valid JSON (no markdown):
 
     const geminiData = await geminiResponse.json();
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    
+
     if (!text) {
-      throw new Error('Invalid AI response');
+      console.error('❌ No text in AI response:', JSON.stringify(geminiData));
+      throw new Error('Invalid AI response - no text returned');
     }
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Could not parse AI response');
+    console.log('📄 Raw response length:', text.length);
+
+    // Parse JSON (responseMimeType should give us clean JSON, but add fallback)
+    let feedback;
+    try {
+      feedback = JSON.parse(text);
+      console.log('✅ Direct JSON parse successful');
+    } catch (directParseError) {
+      console.log('⚠️ Direct parse failed, trying extraction...');
+      
+      // Fallback: Clean and extract
+      let cleanedText = text
+        .replace(/```json\s*/gi, '')
+        .replace(/```\s*/g, '')
+        .replace(/^[^{]*/, '')
+        .trim();
+      
+      // Find last complete closing brace
+      const lastBrace = cleanedText.lastIndexOf('}');
+      if (lastBrace !== -1) {
+        cleanedText = cleanedText.substring(0, lastBrace + 1);
+      }
+      
+      try {
+        feedback = JSON.parse(cleanedText);
+        console.log('✅ Extraction parse successful');
+      } catch (extractError) {
+        console.error('❌ All parsing failed');
+        console.error('First 500 chars:', text.substring(0, 500));
+        console.error('Last 500 chars:', text.substring(Math.max(0, text.length - 500)));
+        throw new Error('Could not parse AI response - invalid JSON');
+      }
     }
 
-    const feedback = JSON.parse(jsonMatch[0]);
-
-    if (!feedback.score) {
-      throw new Error('Invalid feedback structure');
+    if (!feedback.score || typeof feedback.score !== 'number') {
+      throw new Error('Invalid feedback structure - missing score');
     }
 
     // Calculate ELO
