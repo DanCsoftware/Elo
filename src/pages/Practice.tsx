@@ -41,7 +41,7 @@ const Practice = () => {
         setAnswer(savedAnswer || '');
         setLoading(false);
         console.log('📦 Loaded saved question from localStorage');
-        return; // Don't fetch new question
+        return;
       } catch (err) {
         console.error('Failed to load saved question:', err);
         localStorage.removeItem('elo_current_question');
@@ -64,14 +64,13 @@ const Practice = () => {
       return;
     }
 
-    // Don't fetch if we already have a question or already fetched
     if (question || hasFetchedRef.current) {
       return;
     }
 
     hasFetchedRef.current = true;
     fetchAdaptiveQuestion();
-  }, [user]); // Only depend on user, not difficultyPreference
+  }, [user]);
 
   const fetchAdaptiveQuestion = async () => {
     setLoading(true);
@@ -156,6 +155,57 @@ const Practice = () => {
     }
   };
 
+  const updateStreak = async () => {
+    if (!user) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    try {
+      const { data: userStats } = await supabase
+        .from('user_stats')
+        .select('current_streak, last_active_date, longest_streak')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (userStats?.last_active_date === today) {
+        console.log('✅ Already answered today, streak unchanged');
+        return;
+      }
+      
+      let newStreak = 1;
+      if (userStats?.last_active_date) {
+        const lastDate = new Date(userStats.last_active_date);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const lastDateStr = lastDate.toISOString().split('T')[0];
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        if (lastDateStr === yesterdayStr) {
+          newStreak = (userStats.current_streak || 0) + 1;
+          console.log(`🔥 Streak continued: ${newStreak} days`);
+        } else {
+          console.log(`💔 Streak broken, starting fresh at 1 day`);
+        }
+      } else {
+        console.log(`🆕 First streak day!`);
+      }
+      
+      await supabase
+        .from('user_stats')
+        .update({
+          current_streak: newStreak,
+          last_active_date: today,
+          longest_streak: Math.max(newStreak, userStats?.longest_streak || 0)
+        })
+        .eq('user_id', user.id);
+        
+      console.log(`✅ Streak updated: ${newStreak} days`);
+    } catch (error) {
+      console.error('❌ Failed to update streak:', error);
+    }
+  };
+
   const canSubmit = answer.trim().length > 0 && !submitting;
 
   const handleSubmit = async () => {
@@ -206,6 +256,9 @@ const Practice = () => {
         }
       }
 
+      // Update streak after successful submission
+      await updateStreak();
+
       // Clear saved state after successful submit
       localStorage.removeItem('elo_current_question');
       localStorage.removeItem('elo_current_answer');
@@ -226,32 +279,27 @@ const Practice = () => {
   };
 
   const handleSkip = () => {
-    // Clear saved state
     localStorage.removeItem('elo_current_question');
     localStorage.removeItem('elo_current_answer');
     
     setAnswer('');
     setQuestion(null);
-    hasFetchedRef.current = false; // Allow fetching again
+    hasFetchedRef.current = false;
     fetchAdaptiveQuestion();
   };
 
-  // Handle difficulty change - fetch new question
   const handleDifficultyChange = (newDifficulty: DifficultyPreference) => {
     setDifficultyPreference(newDifficulty);
     
-    // Clear current state and fetch new question
     localStorage.removeItem('elo_current_question');
     localStorage.removeItem('elo_current_answer');
     setAnswer('');
     setQuestion(null);
     hasFetchedRef.current = false;
     
-    // Delay slightly to ensure state is updated
     setTimeout(() => fetchAdaptiveQuestion(), 100);
   };
 
-  // Show sign-in prompt
   if (!user) {
     return (
       <Layout>

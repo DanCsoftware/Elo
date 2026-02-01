@@ -6,6 +6,8 @@ interface UserStats {
   totalSolved: number;
   avgScore: number;
   streak: number;
+  currentStreak: number;
+  longestStreak: number;
   thisWeekChange: number;
   categoryScores: {
     [key: string]: number;
@@ -15,8 +17,8 @@ interface UserStats {
     medium: number;
     hard: number;
   };
-  eloRating: number; // 🆕 NEW
-  skillRatings: { [key: string]: number }; // 🆕 NEW
+  eloRating: number;
+  skillRatings: { [key: string]: number };
 }
 
 export function useUserStats() {
@@ -32,29 +34,22 @@ export function useUserStats() {
 
     async function fetchStats() {
       try {
-        // Fetch all sessions
-        const { data: sessions, error: sessionsError } = await supabase
-          .from('user_sessions')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (sessionsError) throw sessionsError;
-
-        // Fetch or create user_stats
+        // Fetch user_stats (contains ELO, streak, etc.)
         let { data: userStats, error: statsError } = await supabase
           .from('user_stats')
           .select('*')
           .eq('user_id', user.id)
           .single();
 
+        // If no stats exist, create them
         if (statsError && statsError.code === 'PGRST116') {
-          // Create initial stats
           const { data: newStats, error: createError } = await supabase
             .from('user_stats')
             .insert({
               user_id: user.id,
-              streak_days: 0,
+              current_streak: 0,
+              longest_streak: 0,
+              last_active_date: null,
               total_questions: 0,
               average_score: 0,
               skill_levels: {
@@ -63,7 +58,7 @@ export function useUserStats() {
                 prioritization: 0,
                 design: 0,
               },
-              elo_rating: 1200, // 🆕 NEW: Start at 1200
+              elo_rating: 1200,
               skill_ratings: {
                 problem_framing: 1200,
                 user_empathy: 1200,
@@ -88,11 +83,23 @@ export function useUserStats() {
           userStats = newStats;
         }
 
+        // Fetch all sessions for calculations
+        const { data: sessions, error: sessionsError } = await supabase
+          .from('user_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (sessionsError) throw sessionsError;
+
+        // If no sessions yet, return default stats
         if (!sessions || sessions.length === 0) {
           setStats({
             totalSolved: 0,
             avgScore: 0,
-            streak: 0,
+            streak: userStats?.current_streak || 0,
+            currentStreak: userStats?.current_streak || 0,
+            longestStreak: userStats?.longest_streak || 0,
             thisWeekChange: 0,
             categoryScores: {},
             difficultyBreakdown: { easy: 0, medium: 0, hard: 0 },
@@ -103,7 +110,7 @@ export function useUserStats() {
           return;
         }
 
-        // Calculate stats
+        // Calculate stats from sessions
         const totalSolved = sessions.length;
         const avgScore = sessions.reduce((sum, s) => sum + (s.score || 0), 0) / totalSolved;
 
@@ -124,18 +131,14 @@ export function useUserStats() {
 
         const categoryScores: { [key: string]: number } = {};
         Object.entries(categoryTotals).forEach(([category, { sum, count }]) => {
-          if (count > 0) {
-            categoryScores[category] = (sum / count) / 10; // ✅ Divide by 10 to get 0-1 (then * 100 for percentage display)
-          } else {
-            categoryScores[category] = 0;
-          }
+          categoryScores[category] = count > 0 ? (sum / count) : 0;
         });
 
         // Difficulty breakdown
         const difficultyBreakdown = {
-          easy: sessions.filter(s => s.difficulty === 'easy').length,
-          medium: sessions.filter(s => s.difficulty === 'medium').length,
-          hard: sessions.filter(s => s.difficulty === 'hard').length,
+          easy: sessions.filter(s => s.difficulty === 'Easy').length,
+          medium: sessions.filter(s => s.difficulty === 'Medium').length,
+          hard: sessions.filter(s => s.difficulty === 'Hard').length,
         };
 
         // Week over week change
@@ -156,12 +159,14 @@ export function useUserStats() {
         setStats({
           totalSolved,
           avgScore,
-          streak: userStats?.streak_days || 0,
+          streak: userStats?.current_streak || 0,
+          currentStreak: userStats?.current_streak || 0,
+          longestStreak: userStats?.longest_streak || 0,
           thisWeekChange,
           categoryScores,
           difficultyBreakdown,
-          eloRating: userStats?.elo_rating || 1200, // 🆕 NEW
-          skillRatings: userStats?.skill_ratings || {}, // 🆕 NEW
+          eloRating: userStats?.elo_rating || 1200,
+          skillRatings: userStats?.skill_ratings || {},
         });
 
       } catch (error) {

@@ -53,7 +53,10 @@ const Feedback = () => {
       "HEART", "5 Whys", "CIRCLES", "RICE", "Impact/Effort",
       "NPS", "DAU/MAU", "activation", "retention", "cohort",
       "funnel", "A/B test", "MVP", "product-market fit",
-      "user segmentation", "churn"
+      "user segmentation", "churn", "BLUF", "OKRs", "LTV/CAC",
+      "North Star Metric", "PMF", "TAM", "Moat", "Sprint",
+      "Backlog", "Tech Debt", "KPI", "Freemium", "SaaS",
+      "ARR", "NRR", "Persona", "Jobs to be Done"
     ];
 
     let result = text;
@@ -73,37 +76,6 @@ const Feedback = () => {
       );
     });
   };
-
-  if (!user) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-3">Sign In to View Feedback</h1>
-            <p className="text-muted-foreground text-lg">
-              Track your progress and get detailed feedback
-            </p>
-          </div>
-          <Button onClick={signInWithGoogle} size="lg">
-            Sign In with Google
-          </Button>
-        </div>
-      </Layout>
-    );
-  }
-
-  if (!state?.feedback) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-          <p className="text-muted-foreground">No feedback data available.</p>
-          <Button onClick={() => navigate('/practice')}>Go to Practice</Button>
-        </div>
-      </Layout>
-    );
-  }
-
-  const { feedback, question, answer } = state;
 
   const handlePushback = async () => {
     if (pushbackText.length > 500) {
@@ -150,10 +122,16 @@ const Feedback = () => {
   };
 
   const handleGenerateExample = async () => {
+    console.log('🚀 Starting example generation for company:', selectedCompany);
     setLoadingExample(true);
+    
     try {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
       const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      // Create AbortController for 60 second timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
       
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/evaluate-answer?type=example&company=${selectedCompany}`,
@@ -165,31 +143,96 @@ const Feedback = () => {
           },
           body: JSON.stringify({
             question: question.text,
-            answer: '',
             category: question.category,
             difficulty: question.difficulty,
           }),
+          signal: controller.signal,
         }
       );
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Example generation failed:', errorText);
         throw new Error('Failed to generate example');
       }
 
       const data = await response.json();
+      console.log('📦 Received response:', data);
+      
+      if (!data.exampleAnswer) {
+        throw new Error('No example answer returned');
+      }
+      
       setExampleAnswer(data.exampleAnswer);
       setShowExample(true);
       toast.success('Example answer generated!');
     } catch (error) {
-      console.error('Error generating example:', error);
-      toast.error('Failed to generate example answer. Please try again.');
+      console.error('❌ Generation failed:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        toast.error('Request timed out after 60 seconds. Please try again.');
+      } else {
+        toast.error('Failed to generate example answer. Please try again.');
+      }
     } finally {
       setLoadingExample(false);
     }
   };
 
+  if (!user) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-3">Sign In to View Feedback</h1>
+            <p className="text-muted-foreground text-lg">
+              Track your progress and get detailed feedback
+            </p>
+          </div>
+          <Button onClick={signInWithGoogle} size="lg">
+            Sign In with Google
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!state?.feedback) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+          <p className="text-muted-foreground">No feedback data available.</p>
+          <Button onClick={() => navigate('/practice')}>Go to Practice</Button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const { feedback, question, answer } = state;
+
   return (
     <Layout>
+      {/* ✅ LOADING OVERLAY - NEW */}
+      {loadingExample && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-card p-8 rounded-lg border border-border shadow-2xl max-w-md">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <div className="text-center">
+                <p className="font-semibold text-lg">Generating 9/10 Answer...</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  AI is crafting a {selectedCompany.charAt(0).toUpperCase() + selectedCompany.slice(1)}-style reference answer
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  This may take 20-30 seconds
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4 max-w-3xl mx-auto pb-6">
         
         {/* Question */}
@@ -248,7 +291,7 @@ const Feedback = () => {
             <div className="flex gap-2">
               {!showPushback && !pushbackResult && feedback.score < 9 && (
                 <Button onClick={() => setShowPushback(true)} size="sm" variant="outline">
-                  Contest Score
+                  Push Back
                 </Button>
               )}
               <Button onClick={() => navigate('/practice')} size="sm">
@@ -283,7 +326,7 @@ const Feedback = () => {
         {(showPushback || pushbackResult) && (
           <section className="bg-card border border-border p-5 space-y-3">
             <h3 className="text-sm font-semibold uppercase tracking-wide">
-              {pushbackResult ? 'Pushback Result' : 'Pushback!'}
+              {pushbackResult ? 'Pushback Result' : 'Push Back on Score'}
             </h3>
 
             {showPushback && !pushbackResult && (
@@ -291,13 +334,13 @@ const Feedback = () => {
                 <textarea
                   value={pushbackText}
                   onChange={(e) => setPushbackText(e.target.value)}
-                  placeholder="Explain why you disagree. What did the evaluator miss? Be specific. (Min 100 words)"
+                  placeholder="Explain why you disagree. What did the evaluator miss? Be specific. (Max 500 characters)"
                   className="w-full min-h-[120px] p-3 bg-background border border-border rounded-md text-sm resize-none"
                   disabled={pushbackLoading}
                 />
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    {pushbackText.length} / 500 characters (max)
+                    {pushbackText.length} / 500 characters
                   </span>
                   <div className="flex gap-2">
                     <Button
@@ -316,7 +359,7 @@ const Feedback = () => {
                       {pushbackLoading ? (
                         <><Loader2 className="w-4 h-4 animate-spin mr-2" />Evaluating...</>
                       ) : (
-                        'Push Back'
+                        'Submit Pushback'
                       )}
                     </Button>
                   </div>
@@ -422,26 +465,26 @@ const Feedback = () => {
           )}
         </section>
 
-{/* Example Answer */}
-<section className="bg-card border border-border p-5 space-y-3">
-  <div className="flex items-center justify-between">
-    <div>
-      <h3 className="text-sm font-semibold uppercase tracking-wide">Example 9/10 Answer</h3>
-      <p className="text-xs text-muted-foreground mt-1">See how a senior PM would answer</p>
-    </div>
-    {!showExample && (
-      <Button onClick={handleGenerateExample} disabled={loadingExample} size="sm" variant="outline">
-        {loadingExample ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            Generating...
-          </>
-        ) : (
-          'Generate Answer'
-        )}
-      </Button>
-    )}
-  </div>
+        {/* Example Answer */}
+        <section className="bg-card border border-border p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide">Example 9/10 Answer</h3>
+              <p className="text-xs text-muted-foreground mt-1">See how a senior PM would answer</p>
+            </div>
+            {!showExample && (
+              <Button onClick={handleGenerateExample} disabled={loadingExample} size="sm" variant="outline">
+                {loadingExample ? (
+                  <>
+                    <Loader2 className="w-4 w-4 animate-spin mr-2" />
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Answer'
+                )}
+              </Button>
+            )}
+          </div>
 
           {!showExample && (
             <CompanySelector

@@ -50,6 +50,12 @@ const NavigationBar = () => {
               >
                 History
               </Link>
+              <Link
+                to="/pond"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                🦆 The Pond
+              </Link>
 
               {/* User Menu */}
               <div className="flex items-center gap-3 ml-3 pl-3 border-l border-border">

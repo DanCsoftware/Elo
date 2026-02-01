@@ -11,7 +11,7 @@ export function useRatingPercentile(userRating: number) {
       try {
         // Get all user ratings
         const { data: allStats, error } = await supabase
-          .from('user_stats')
+          .from('user_rankings')
           .select('elo_rating')
           .not('elo_rating', 'is', null);
 

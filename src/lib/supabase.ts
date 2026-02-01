@@ -29,10 +29,10 @@ export type PMSkill =
 export interface Question {
   id: string
   text: string
-  category: 'strategy' | 'metrics' | 'prioritization' | 'design' // Keep for backwards compatibility
+  category: 'strategy' | 'metrics' | 'prioritization' | 'design'
   difficulty: 'easy' | 'medium' | 'hard'
-  skills: PMSkill[] // 🆕 NEW: Multi-skill tagging
-  elo_difficulty: number // 🆕 NEW: ELO difficulty rating (1000-2000)
+  skills: PMSkill[]
+  elo_difficulty: number
   hint?: string
   created_at: string
 }
@@ -52,10 +52,10 @@ export interface UserSession {
     prioritization: number
     design: number
   }
-  skill_scores?: { [key in PMSkill]?: number } // 🆕 NEW: Score per skill
-  elo_before?: number // 🆕 NEW: Rating before this question
-  elo_after?: number // 🆕 NEW: Rating after
-  elo_change?: number // 🆕 NEW: Rating change (+/- points)
+  skill_scores?: { [key in PMSkill]?: number }
+  elo_before?: number
+  elo_after?: number
+  elo_change?: number
   created_at: string
   category: string
   difficulty: string
@@ -66,6 +66,9 @@ export interface UserStats {
   streak_days: number
   last_practice_date: string | null
   total_questions: number
+  current_streak: number         // ✅ Added
+  longest_streak: number          // ✅ Added
+  last_active_date: string | null // ✅ Added
   average_score: number
   skill_levels: {
     strategy: number
@@ -73,8 +76,8 @@ export interface UserStats {
     prioritization: number
     design: number
   }
-  elo_rating: number // 🆕 NEW: Overall ELO rating
-  skill_ratings: { [key in PMSkill]: number } // 🆕 NEW: ELO per skill
+  elo_rating: number
+  skill_ratings: { [key in PMSkill]: number }
   updated_at: string
 }
 

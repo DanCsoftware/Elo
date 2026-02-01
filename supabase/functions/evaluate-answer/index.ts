@@ -127,7 +127,7 @@ Generate the answer now in plain text (no JSON, no markdown):`;
             contents: [{ parts: [{ text: examplePrompt }] }],
             generationConfig: { 
               temperature: 0.7, 
-              maxOutputTokens: 8192,
+              maxOutputTokens: 4096,
               responseMimeType: "text/plain"
             },
           }),
@@ -182,7 +182,7 @@ Return ONLY valid JSON (be CONCISE - max 10 words per field):
             contents: [{ parts: [{ text: pushbackPrompt }] }],
             generationConfig: { 
               temperature: 0.7, 
-              maxOutputTokens: 8192,
+              maxOutputTokens: 2048,
               responseMimeType: "application/json"
             },
           }),
@@ -212,6 +212,71 @@ Return ONLY valid JSON (be CONCISE - max 10 words per field):
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+// ===== ANALYZE POND NOTES (REPLACE EXISTING SECTION) =====
+// This goes in your supabase/functions/evaluate-answer/index.ts
+    if (requestType === 'analyze-pond') {
+      console.log('Analyzing pond notes...');
+      
+      const { notesContent } = requestBody;
+
+      const analyzePrompt = `You're a Principal PM reviewing a junior PM's note-taking habits. Determine if their notes are HEALTHY or UNHEALTHY.
+
+THEIR NOTES:
+${notesContent}
+
+HEALTHY NOTES have:
+- Specific triggers: "When I [situation], I [action]"
+- Named frameworks: RICE, HEART, Jobs-to-be-done
+- Numbers: percentages, timelines, costs
+- Personal lessons: "Last time I did X, Y happened"
+
+UNHEALTHY NOTES are:
+- Generic platitudes: "Think about users"
+- No context: "Be more structured"
+- Theory without application
+
+YOUR REVIEW (max 120 words):
+
+Start with: "✅ HEALTHY" or "⚠️ UNHEALTHY"
+
+Then in 2-3 sentences:
+1. What makes them healthy/unhealthy (quote specific examples)
+2. One concrete fix
+
+Be brutally honest and conversational. This is private feedback.
+
+Example: "⚠️ UNHEALTHY. You wrote 'Always think about metrics' - that's useless. You'll forget what it means tomorrow. But 'When prioritizing features, I rank P0/P1/P2 first to prevent bike-shedding' is gold - specific trigger and action. Delete generic advice. Keep only notes that answer: when do I use this?"`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: analyzePrompt }] }],
+            generationConfig: { 
+              temperature: 0.9,
+              maxOutputTokens: 512,
+              responseMimeType: "text/plain"
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('❌ Pond analysis error:', errorBody);
+        throw new Error('Failed to analyze notes');
+      }
+
+      const data = await response.json();
+      const review = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Failed to generate review';
+
+      return new Response(
+        JSON.stringify({ review }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // ===== NORMAL EVALUATION =====
     const { question, answer, category, difficulty, userEloRating, questionEloDifficulty } = requestBody;
@@ -230,7 +295,7 @@ Return ONLY valid JSON (be CONCISE - max 10 words per field):
       );
     }
 
-const prompt = `You are an ELITE PM interviewer (ex-Google L7, 15+ years experience) known for RIGOROUS evaluation that develops world-class product leaders.
+    const prompt = `You are an ELITE PM interviewer (ex-Google L7, 15+ years experience) known for RIGOROUS evaluation that develops world-class product leaders.
 
 QUESTION: ${question}
 CATEGORY: ${category}
@@ -368,25 +433,76 @@ REMEMBER: This evaluation develops SKILLS, not interview tactics. Be rigorous. B
       throw new Error('Invalid feedback structure - missing score');
     }
 
-    // Calculate ELO
+    // ===== CALCULATE ELO WITH QUALITY GATES AND DIFFICULTY MULTIPLIERS =====
     if (userEloRating && questionEloDifficulty) {
-      const expectedScore = 1 / (1 + Math.pow(10, (questionEloDifficulty - userEloRating) / 400));
-      const actualScore = feedback.score / 10;
+      const actualScore = feedback.score / 10; // 0.0 to 1.0
       
-      let kFactor = 40;
-      if (feedback.score < 4) {
-        kFactor = 60;
-      } else if (feedback.score >= 9) {
-        kFactor = 50;
+      // Calculate expected performance based on rating difference
+      const ratingDiff = questionEloDifficulty - userEloRating;
+      const expectedScore = 1 / (1 + Math.pow(10, ratingDiff / 400));
+      
+      console.log(`🎯 Expected: ${(expectedScore * 10).toFixed(1)}/10, Actual: ${feedback.score}/10`);
+      
+      // ===== QUALITY GATE: Absolute Performance Standards =====
+      // Poor answers (< 6/10) ALWAYS incur a penalty, regardless of difficulty
+      let qualityPenalty = 0;
+      if (feedback.score < 6.0) {
+        // Progressive penalty: 5.5/10 = -5, 5.0/10 = -10, 4.0/10 = -20, etc.
+        qualityPenalty = -(6.0 - feedback.score) * 10;
+        console.log(`⚠️ Quality penalty: ${qualityPenalty} (score < 6.0)`);
+      } else if (feedback.score >= 8.5) {
+        // Bonus for excellent answers
+        qualityPenalty = (feedback.score - 8.5) * 5;
+        console.log(`✨ Quality bonus: +${qualityPenalty} (score >= 8.5)`);
       }
       
-      const change = Math.round(kFactor * (actualScore - expectedScore));
-      const newRating = Math.max(800, Math.min(2200, userEloRating + change));
+      // ===== DIFFICULTY MULTIPLIER =====
+      // Harder questions = bigger point swings (both ways)
+      let difficultyMultiplier = 1.0;
+      if (questionEloDifficulty >= 1700) {
+        difficultyMultiplier = 1.4; // Expert questions worth 40% more
+      } else if (questionEloDifficulty >= 1500) {
+        difficultyMultiplier = 1.2; // Senior PM questions worth 20% more
+      } else if (questionEloDifficulty <= 1000) {
+        difficultyMultiplier = 0.7; // Easy questions worth 30% less
+      }
       
-      feedback.eloChange = change;
+      // ===== BASE K-FACTOR (Volatility) =====
+      // How much ratings can swing per game
+      let kFactor = 32; // Standard chess K-factor
+      
+      // New players (< 1000) should be more volatile (find their level faster)
+      if (userEloRating < 1000) {
+        kFactor = 50;
+      } else if (userEloRating > 1800) {
+        kFactor = 24; // Experts are more stable
+      }
+      
+      // ===== CALCULATE CHANGE =====
+      // Base ELO formula
+      const baseChange = kFactor * (actualScore - expectedScore);
+      
+      // Apply difficulty multiplier to the base change
+      const difficultyAdjustedChange = baseChange * difficultyMultiplier;
+      
+      // Add quality penalty/bonus (this is ADDITIVE, not multiplicative)
+      const totalChange = difficultyAdjustedChange + qualityPenalty;
+      
+      // Round and cap (prevent huge swings)
+      const maxChange = 150;
+      const cappedChange = Math.max(-maxChange, Math.min(maxChange, Math.round(totalChange)));
+      
+      const newRating = Math.max(800, Math.min(2200, userEloRating + cappedChange));
+      
+      feedback.eloChange = cappedChange;
       feedback.newEloRating = newRating;
       
-      console.log(`📊 ELO: ${userEloRating} → ${newRating} (${change > 0 ? '+' : ''}${change})`);
+      console.log(`📊 ELO Change Breakdown:`);
+      console.log(`   Base change: ${baseChange.toFixed(1)}`);
+      console.log(`   Difficulty multiplier (${difficultyMultiplier}x): ${difficultyAdjustedChange.toFixed(1)}`);
+      console.log(`   Quality adjustment: ${qualityPenalty.toFixed(1)}`);
+      console.log(`   Final change: ${cappedChange > 0 ? '+' : ''}${cappedChange}`);
+      console.log(`   ${userEloRating} → ${newRating}`);
     }
 
     return new Response(

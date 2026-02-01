@@ -9,6 +9,7 @@ import Feedback from "./pages/Feedback";
 import History from "./pages/History";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from '@/contexts/AuthContext';
+import Pond from '@/pages/Pond';
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/practice" element={<Practice />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/history" element={<History />} />
+            <Route path="/pond" element={<Pond />} /> 
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
