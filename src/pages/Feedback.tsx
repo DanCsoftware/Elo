@@ -1,10 +1,10 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
-import { Check, X, Sparkles, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
-import { FeedbackResult } from '@/lib/gemini';
+import { Check, X, Loader2, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
+import { FeedbackResult, generateAnswerEvolution, AnswerEvolution } from '@/lib/gemini';
 import { Question } from '@/lib/supabase';
 import { FrameworkTerm } from '@/components/FrameworkTerm';
 import { toast } from 'sonner';
@@ -28,12 +28,19 @@ const Feedback = () => {
   const state = location.state as LocationState | null;
   const { user, signInWithGoogle } = useAuth();
   
+  // Example Answer states
   const [showExample, setShowExample] = useState(false);
   const [exampleAnswer, setExampleAnswer] = useState<string | null>(null);
   const [loadingExample, setLoadingExample] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState('google');
   const [companySelectorExpanded, setCompanySelectorExpanded] = useState(false);
   
+  // Evolution states
+  const [showEvolution, setShowEvolution] = useState(false);
+  const [evolution, setEvolution] = useState<AnswerEvolution | null>(null);
+  const [loadingEvolution, setLoadingEvolution] = useState(false);
+  
+  // Pushback states
   const [showPushback, setShowPushback] = useState(false);
   const [pushbackText, setPushbackText] = useState('');
   const [pushbackLoading, setPushbackLoading] = useState(false);
@@ -77,6 +84,50 @@ const Feedback = () => {
     });
   };
 
+  const handleGenerateEvolution = async () => {
+    if (!question || !answer || !feedback) return;
+    
+    setLoadingEvolution(true);
+    
+    const timeoutId = setTimeout(() => {
+      setLoadingEvolution(false);
+      toast.error('Evolution generation timed out. The analysis was too complex. Try refreshing and clicking again.');
+    }, 30000);
+    
+    try {
+      const evolutionData = await generateAnswerEvolution(
+        question.text,
+        answer,
+        feedback.score
+      );
+      
+      clearTimeout(timeoutId);
+      
+      if (!evolutionData || !evolutionData.improvements || evolutionData.improvements.length === 0) {
+        toast.error('No improvements generated. Your answer might already be very strong!');
+        setLoadingEvolution(false);
+        return;
+      }
+      
+      setEvolution(evolutionData);
+      setShowEvolution(true);
+      toast.success(`Found ${evolutionData.improvements.length} ways to improve!`);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      console.error('Evolution error:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          toast.error('Request timed out. Please try again.');
+        } else {
+          toast.error('Failed to generate improvements. Please try again.');
+        }
+      }
+    } finally {
+      setLoadingEvolution(false);
+    }
+  };
+
   const handlePushback = async () => {
     if (pushbackText.length > 500) {
       toast.error('Please defend your position in under 500 characters');
@@ -100,7 +151,6 @@ const Feedback = () => {
             question: question.text,
             originalAnswer: answer,
             originalScore: feedback.score,
-            originalFeedback: feedback,
             pushbackText,
           }),
         }
@@ -122,14 +172,12 @@ const Feedback = () => {
   };
 
   const handleGenerateExample = async () => {
-    console.log('🚀 Starting example generation for company:', selectedCompany);
     setLoadingExample(true);
     
     try {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
       const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      // Create AbortController for 60 second timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000);
       
@@ -153,13 +201,10 @@ const Feedback = () => {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Example generation failed:', errorText);
         throw new Error('Failed to generate example');
       }
 
       const data = await response.json();
-      console.log('📦 Received response:', data);
       
       if (!data.exampleAnswer) {
         throw new Error('No example answer returned');
@@ -171,9 +216,9 @@ const Feedback = () => {
     } catch (error) {
       console.error('❌ Generation failed:', error);
       if (error instanceof Error && error.name === 'AbortError') {
-        toast.error('Request timed out after 60 seconds. Please try again.');
+        toast.error('Request timed out. Please try again.');
       } else {
-        toast.error('Failed to generate example answer. Please try again.');
+        toast.error('Failed to generate example. Please try again.');
       }
     } finally {
       setLoadingExample(false);
@@ -191,7 +236,7 @@ const Feedback = () => {
             </p>
           </div>
           <Button onClick={signInWithGoogle} size="lg">
-            Sign In with Google
+            Sign In with Email
           </Button>
         </div>
       </Layout>
@@ -213,16 +258,21 @@ const Feedback = () => {
 
   return (
     <Layout>
-      {/* ✅ LOADING OVERLAY - NEW */}
-      {loadingExample && (
+      {/* Loading Overlays */}
+      {(loadingExample || loadingEvolution) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-card p-8 rounded-lg border border-border shadow-2xl max-w-md">
             <div className="flex flex-col items-center gap-4">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
               <div className="text-center">
-                <p className="font-semibold text-lg">Generating 9/10 Answer...</p>
+                <p className="font-semibold text-lg">
+                  {loadingExample ? 'Generating 9/10 Answer...' : 'Analyzing Your Answer...'}
+                </p>
                 <p className="text-sm text-muted-foreground mt-2">
-                  AI is crafting a {selectedCompany.charAt(0).toUpperCase() + selectedCompany.slice(1)}-style reference answer
+                  {loadingExample 
+                    ? `AI is crafting a ${selectedCompany.charAt(0).toUpperCase() + selectedCompany.slice(1)}-style reference answer`
+                    : 'Finding specific ways to improve your reasoning'
+                  }
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   This may take 20-30 seconds
@@ -234,7 +284,6 @@ const Feedback = () => {
       )}
 
       <div className="space-y-4 max-w-3xl mx-auto pb-6">
-        
         {/* Question */}
         <section className="bg-card border border-border p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Question</p>
@@ -300,6 +349,92 @@ const Feedback = () => {
             </div>
           </div>
         </section>
+
+        {/* Answer Evolution Section */}
+        {feedback.score < 9 && (
+          <section className="bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold uppercase tracking-wide flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  How to Reach 9/10
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  See exactly how YOUR answer evolves to a 9/10
+                </p>
+              </div>
+              {!showEvolution && (
+                <Button 
+                  onClick={handleGenerateEvolution} 
+                  disabled={loadingEvolution} 
+                  size="sm"
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  {loadingEvolution ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    'Show My Path to 9/10'
+                  )}
+                </Button>
+              )}
+            </div>
+
+            {showEvolution && evolution && (
+              <div className="space-y-4 mt-4 pt-4 border-t border-primary/20">
+                {/* Improvements */}
+                <div className="space-y-3">
+                  {evolution.improvements.map((improvement, i) => (
+                    <div key={i} className="bg-background/60 border border-border rounded-md p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="text-xs font-semibold text-primary uppercase">
+                          Improvement {i + 1}
+                        </p>
+                        <span className="text-xs font-bold text-success">
+                          {improvement.scoreImpact}
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">You said:</p>
+                          <p className="text-sm italic text-muted-foreground">
+                            "{improvement.yourAnswer}"
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-success mb-1">Upgrade:</p>
+                          <p className="text-sm font-medium">
+                            {improvement.upgraded}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-xs text-muted-foreground">
+                            <span className="font-semibold">Why:</span> {improvement.why}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Score Impact Summary */}
+                <div className="flex items-center justify-between bg-success/10 border border-success/30 rounded p-3">
+                  <span className="text-sm font-medium">
+                    Make these {evolution.improvements.length} changes:
+                  </span>
+                  <span className="text-lg font-bold text-success">
+                    {feedback.score.toFixed(1)} → ~9.0
+                  </span>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Your Answer - Collapsible */}
         <section className="bg-card border border-border p-5">

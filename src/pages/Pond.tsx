@@ -214,7 +214,7 @@ const Pond = () => {
             </p>
           </div>
           <Button onClick={signInWithGoogle} size="lg">
-            Sign In with Google
+            Sign In with Email
           </Button>
         </div>
       </Layout>

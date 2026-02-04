@@ -6,13 +6,11 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Get API key from environment
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     
     if (!GEMINI_API_KEY) {
@@ -23,11 +21,82 @@ serve(async (req) => {
       );
     }
 
-    console.log('✅ GEMINI_API_KEY found');
-
     const url = new URL(req.url);
     const requestType = url.searchParams.get('type') || 'evaluation';
     const requestBody = await req.json();
+    
+// ===== ANSWER EVOLUTION =====
+if (requestType === 'evolution') {
+  console.log('Generating answer evolution...');
+  
+  const { question, userAnswer, score } = requestBody;
+
+  const evolutionPrompt = `You are helping a PM improve their answer from ${score}/10 to 9/10.
+
+QUESTION: ${question}
+
+THEIR ANSWER:
+${userAnswer}
+
+Generate 3-4 specific improvements. For EACH improvement:
+1. Quote 5-15 words from their answer
+2. Show the upgraded version
+3. Explain why in ONE sentence
+
+Return ONLY valid JSON (no markdown, no preamble):
+{
+  "improvements": [
+    {
+      "original": "exact quote from their answer (5-15 words)",
+      "improved": "upgraded version (20-30 words max)",
+      "why": "one sentence explanation",
+      "impact": "+0.5" or "+1.0"
+    }
+  ]
+}
+
+Keep it concise. Focus on the BIGGEST impact improvements.`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: evolutionPrompt }] }],
+        generationConfig: { 
+          temperature: 0.7, 
+          maxOutputTokens: 2000, // Reduced from 3000
+          responseMimeType: "application/json"
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Evolution error:', errorText);
+    throw new Error('Failed to generate evolution');
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  
+  let evolution;
+  try {
+    evolution = JSON.parse(text);
+  } catch (parseError) {
+    console.error('Parse error:', parseError);
+    console.error('Raw text:', text);
+    throw new Error('Failed to parse evolution response');
+  }
+
+  // Don't generate full upgraded answer - just improvements
+  return new Response(
+    JSON.stringify({ improvements: evolution.improvements }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 
     // ===== EXAMPLE ANSWER GENERATION =====
     if (requestType === 'example') {
@@ -36,87 +105,83 @@ serve(async (req) => {
       const { question, category, difficulty } = requestBody;
       const company = url.searchParams.get('company') || 'google';
 
-      const companyStyles: { [key: string]: any } = {
-        google: {
-          style: "Data-driven, user-centric, emphasize metrics and experimentation.",
-          frameworks: "Use HEART metrics, OKRs, A/B testing rigor.",
-          tone: "Analytical, hypothesis-driven, metric-focused."
-        },
-        apple: {
-          style: "User experience first, opinionated about design.",
-          frameworks: "Jobs-to-be-done, user journey mapping.",
-          tone: "Confident, design-forward, user-empathetic."
-        },
-        meta: {
-          style: "Growth-obsessed, network effects, viral loops.",
-          frameworks: "Growth accounting, cohort retention.",
-          tone: "Aggressive, growth-focused, quantitative."
-        },
-        stripe: {
-          style: "Developer-centric, API-first, infrastructure thinking.",
-          frameworks: "Technical feasibility, API design.",
-          tone: "Technical, thoughtful, infrastructure-minded."
-        },
-        amazon: {
-          style: "Customer obsession, working backwards.",
-          frameworks: "Working backwards, six-page narratives.",
-          tone: "Customer-first, detail-oriented."
-        },
-        coinbase: {
-          style: "Crypto-native, regulatory aware, trust paramount.",
-          frameworks: "Security-first design, regulatory constraints.",
-          tone: "Cautious, security-minded."
-        },
-        discord: {
-          style: "Community-first, engagement-driven.",
-          frameworks: "Community metrics, engagement loops.",
-          tone: "Community-focused, creator-centric."
-        },
-        chainlink: {
-          style: "Decentralization, oracle networks, Web3.",
-          frameworks: "Decentralized systems, node economics.",
-          tone: "Technical, decentralization-focused."
-        },
-        twitter: {
-          style: "Real-time engagement, conversation health.",
-          frameworks: "Engagement metrics, content moderation.",
-          tone: "Fast-paced, engagement-focused."
-        }
+      const companyPrompts: { [key: string]: string } = {
+        google: `You're a Google L6 PM. Think like a Googler:
+- Start with user problem, not solution
+- Obsess over metrics and experimentation  
+- Default to data, acknowledge when it's missing
+- Focus on 10x impact, not 10% improvements
+- Use rough estimates when exact data unavailable
+- Challenge assumptions before answering
+
+Avoid: Forcing HEART if metrics don't fit, quoting exact percentages without data, over-indexing on process over outcome.`,
+
+        meta: `You're a Meta IC6 PM. Think like Meta:
+- Growth and engagement are north stars
+- Network effects and viral loops matter
+- Move fast, ship experiments
+- Scale thinking (billions of users)
+- Data-driven but willing to bet on conviction
+
+Avoid: Slow, overthought analysis. Meta PMs ship and learn.`,
+
+        apple: `You're an Apple ICT4 PM. Think like Apple:
+- User experience is everything
+- Opinionated about design and quality
+- "No" is as important as "yes"
+- Polish over features
+- Think about brand and ecosystem
+
+Avoid: Feature lists. Apple builds experiences, not checklists.`,
+
+        stripe: `You're a Stripe Staff PM. Think like Stripe:
+- Developer experience is the product
+- API design and infrastructure thinking
+- Simplicity for complex problems
+- Think about edge cases and failure modes
+- Technical feasibility is critical
+
+Avoid: Fluffy business speak. Stripe PMs are technical.`,
+
+        amazon: `You're an Amazon L7 PM. Think like Amazon:
+- Start with customer and work backwards
+- Bias for action and ownership
+- Think big but start small (two-way doors)
+- Quantify everything
+- Frugality and simplification
+
+Avoid: Politics and process. Amazon rewards builders.`,
+
+        coinbase: `You're a Coinbase Senior PM. Think crypto-native:
+- Trust and security paramount
+- Regulatory awareness is critical
+- Explain crypto complexity simply
+- Think about worst-case scenarios
+- Balance innovation with safety
+
+Avoid: Moving fast and breaking things. Users' money is at stake.`
       };
 
-      const companyInfo = companyStyles[company] || companyStyles.google;
+      const companyStyle = companyPrompts[company] || companyPrompts.google;
 
-      const examplePrompt = `You are generating a REFERENCE-QUALITY answer that would score 9.0-9.5 out of 10 in a ${company.toUpperCase()} PM interview.
+      const examplePrompt = `${companyStyle}
 
 QUESTION: ${question}
 CATEGORY: ${category}
 DIFFICULTY: ${difficulty}
-COMPANY: ${company.toUpperCase()}
 
-COMPANY STYLE: ${companyInfo.style}
-FRAMEWORKS: ${companyInfo.frameworks}
-TONE: ${companyInfo.tone}
-
-CRITICAL REQUIREMENTS FOR A 9/10 ANSWER:
-
-1. START WITH CLARIFYING QUESTIONS (30-50 words)
-2. QUANTIFY THE FUNNEL (if relevant)
-3. EXPLICIT PRIORITIZATION WITH REASONING
-4. INCLUDE TRADEOFFS
-5. SPECIFIC METRICS, NOT VAGUE GOALS
-6. COMPANY-SPECIFIC FRAMEWORKS
-7. END WITH VALIDATION PLAN
+Generate a 9/10 answer (400-500 words) that would impress in a ${company.toUpperCase()} PM interview.
 
 STRUCTURE:
-[Clarifying Questions - 50 words]
-[Framework/Approach - 100 words]
-[Prioritized Analysis - 150 words]
-[Specific Recommendation with Metrics - 100 words]
-[Validation Plan - 50 words]
+1. Challenge the premise (if relevant) - WHY are we doing this?
+2. Ask clarifying questions
+3. Segment the problem (different users, use cases, contexts)
+4. Identify trade-offs and second-order effects
+5. Use rough estimates where concrete (avoid false precision)
+6. Propose alternatives or better solutions
+7. End with how you'd validate
 
-TOTAL: 400-500 words. Be PRECISE. Be SPECIFIC. Use NUMBERS.
-
-Generate the answer now in plain text (no JSON, no markdown):`;
+Write in plain text (no JSON, no markdown). Sound like a senior PM, not an AI.`;
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -126,7 +191,7 @@ Generate the answer now in plain text (no JSON, no markdown):`;
           body: JSON.stringify({
             contents: [{ parts: [{ text: examplePrompt }] }],
             generationConfig: { 
-              temperature: 0.7, 
+              temperature: 0.8, 
               maxOutputTokens: 4096,
               responseMimeType: "text/plain"
             },
@@ -135,8 +200,6 @@ Generate the answer now in plain text (no JSON, no markdown):`;
       );
 
       if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('❌ Example generation error:', errorBody);
         throw new Error('Failed to generate example');
       }
 
@@ -153,7 +216,7 @@ Generate the answer now in plain text (no JSON, no markdown):`;
     if (requestType === 'pushback') {
       console.log('Evaluating pushback...');
       
-      const { question, originalAnswer, originalScore, originalFeedback, pushbackText } = requestBody;
+      const { question, originalAnswer, originalScore, pushbackText } = requestBody;
 
       const pushbackPrompt = `You are a Senior PM evaluating pushback on a score.
 
@@ -164,13 +227,13 @@ PUSHBACK: ${pushbackText}
 
 Be EXTREMELY skeptical. Most pushbacks are wrong. Only adjust if they provide concrete evidence.
 
-Return ONLY valid JSON (be CONCISE - max 10 words per field):
+Return ONLY valid JSON:
 {
   "verdict": "UPHELD" | "PARTIALLY_ADJUSTED" | "FULLY_ADJUSTED",
   "newScore": <number>,
-  "reasoning": "<max 80 words>",
-  "counterpoints": ["<max 40 words>", "<max 40 words>"],
-  "finalThoughts": "<max 40 words>"
+  "reasoning": "<80 words max>",
+  "counterpoints": ["<40 words>", "<40 words>"],
+  "finalThoughts": "<40 words>"
 }`;
 
       const response = await fetch(
@@ -190,62 +253,38 @@ Return ONLY valid JSON (be CONCISE - max 10 words per field):
       );
 
       if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('❌ Pushback evaluation error:', errorBody);
         throw new Error('Failed to evaluate pushback');
       }
 
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      let result;
-      try {
-        result = JSON.parse(text);
-      } catch {
-        const jsonMatch = text?.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('Could not parse pushback response');
-        result = JSON.parse(jsonMatch[0]);
-      }
-      
+      const result = JSON.parse(text);
+
       return new Response(
         JSON.stringify(result),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-// ===== ANALYZE POND NOTES (REPLACE EXISTING SECTION) =====
-// This goes in your supabase/functions/evaluate-answer/index.ts
+
+    // ===== ANALYZE POND NOTES =====
     if (requestType === 'analyze-pond') {
       console.log('Analyzing pond notes...');
       
       const { notesContent } = requestBody;
 
-      const analyzePrompt = `You're a Principal PM reviewing a junior PM's note-taking habits. Determine if their notes are HEALTHY or UNHEALTHY.
+      const analyzePrompt = `You're a Principal PM reviewing note-taking habits.
 
 THEIR NOTES:
 ${notesContent}
 
-HEALTHY NOTES have:
-- Specific triggers: "When I [situation], I [action]"
-- Named frameworks: RICE, HEART, Jobs-to-be-done
-- Numbers: percentages, timelines, costs
-- Personal lessons: "Last time I did X, Y happened"
+HEALTHY NOTES: Specific triggers ("When I [situation], I [action]"), named frameworks, numbers, personal lessons
+UNHEALTHY NOTES: Generic platitudes, no context, theory without application
 
-UNHEALTHY NOTES are:
-- Generic platitudes: "Think about users"
-- No context: "Be more structured"
-- Theory without application
+YOUR REVIEW (120 words max):
+Start with "✅ HEALTHY" or "⚠️ UNHEALTHY"
+Then: What makes them healthy/unhealthy (quote examples), one concrete fix
 
-YOUR REVIEW (max 120 words):
-
-Start with: "✅ HEALTHY" or "⚠️ UNHEALTHY"
-
-Then in 2-3 sentences:
-1. What makes them healthy/unhealthy (quote specific examples)
-2. One concrete fix
-
-Be brutally honest and conversational. This is private feedback.
-
-Example: "⚠️ UNHEALTHY. You wrote 'Always think about metrics' - that's useless. You'll forget what it means tomorrow. But 'When prioritizing features, I rank P0/P1/P2 first to prevent bike-shedding' is gold - specific trigger and action. Delete generic advice. Keep only notes that answer: when do I use this?"`;
+Be brutally honest and conversational.`;
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -264,8 +303,6 @@ Example: "⚠️ UNHEALTHY. You wrote 'Always think about metrics' - that's usel
       );
 
       if (!response.ok) {
-        const errorBody = await response.text();
-        console.error('❌ Pond analysis error:', errorBody);
         throw new Error('Failed to analyze notes');
       }
 
@@ -278,7 +315,7 @@ Example: "⚠️ UNHEALTHY. You wrote 'Always think about metrics' - that's usel
       );
     }
 
-    // ===== NORMAL EVALUATION =====
+    // ===== MAIN EVALUATION =====
     const { question, answer, category, difficulty, userEloRating, questionEloDifficulty } = requestBody;
 
     if (!question || question.length > 2000) {
@@ -295,7 +332,7 @@ Example: "⚠️ UNHEALTHY. You wrote 'Always think about metrics' - that's usel
       );
     }
 
-    const prompt = `You are an ELITE PM interviewer (ex-Google L7, 15+ years experience) known for RIGOROUS evaluation that develops world-class product leaders.
+    const prompt = `You are an ELITE PM interviewer evaluating answers to develop world-class product thinking.
 
 QUESTION: ${question}
 CATEGORY: ${category}
@@ -304,64 +341,78 @@ DIFFICULTY: ${difficulty}
 CANDIDATE'S ANSWER:
 ${answer}
 
-YOUR EVALUATION STANDARDS (DIFFERENTIATED FROM CHATGPT):
+**EVALUATION PHILOSOPHY:**
+Your job is to evaluate REASONING QUALITY, not pattern matching. A 9/10 answer with zero framework names beats a 5/10 answer that mentions "RICE" ten times.
 
-**14 PM SKILLS - DEEP EVALUATION:**
-1. Problem Framing: Did they reframe the problem? Challenge assumptions? Identify root cause vs symptom?
-2. User Empathy: Specific user pain points? Segmentation? Jobs-to-be-done thinking?
-3. Metrics Definition: Leading vs lagging indicators? Counter-metrics? Baseline numbers?
-4. Trade-off Analysis: Explicit costs? Opportunity cost quantified? What are we NOT doing?
-5. Prioritization: Clear ranking with reasoning? Impact/effort scoring? Sequencing logic?
-6. Strategic Thinking: Long-term implications? Competitive positioning? Ecosystem effects?
-7. Stakeholder Management: Cross-functional dependencies? Communication plan? Objection handling?
-8. Communication: Structured thinking? Executive summary? Logical flow?
-9. Technical Judgment: Feasibility assessment? Scalability considerations? Technical constraints?
-10. Ambiguity Navigation: Handled missing info? Made assumptions explicit? Probabilistic thinking?
-11. Systems Thinking: Second-order effects? Feedback loops? Unintended consequences?
-12. Market Sense: Competitive dynamics? Market timing? Industry trends?
-13. Experimentation: Hypothesis-driven? A/B test design? Statistical rigor?
-14. Risk Assessment: What could go wrong? Mitigation strategies? Kill criteria?
+**PRIMARY CRITERIA (80% of score):**
 
-**UNIQUE ELO STANDARDS (NOT FOUND IN CHATGPT):**
-- Quantification Requirement: Every claim needs numbers (market size, conversion rates, timelines)
-- Framework Naming: Must cite specific frameworks by name (RICE, HEART, Kano, etc.)
-- Contrarian Thinking: Do they challenge the premise? Question hidden assumptions?
-- Operator Mindset: Talk about implementation, not just strategy
-- Failure Modes: What are the top 3 ways this could fail?
+1. **REASONING DEPTH (30%)**
+   - Did they explain WHY, not just WHAT?
+   - Did they challenge assumptions when appropriate?
+   - Did they connect decisions to outcomes?
+   - Did they consider second-order effects?
 
-**HARSH SCORING CALIBRATION (use decimals for precision):**
-9.5-10.0: Principal/Staff PM level - Would teach this internally
-9.0-9.4: Senior/Lead PM - Reference answer quality
-8.0-8.9: Strong PM - Detailed, quantified, demonstrates expertise
-7.0-7.9: Solid PM - Good structure, some gaps in depth
-6.0-6.9: Junior PM - Surface-level, missing frameworks
+2. **USER SEGMENTATION (20%)**
+   - Did they identify different user types/use cases?
+   - Did they think about who benefits vs who loses?
+   - Did they consider platform dynamics (not just end users)?
+
+3. **TRADE-OFF CLARITY (15%)**
+   - Did they identify what we're NOT doing?
+   - Did they explain costs/downsides?
+   - Did they propose alternatives vs just yes/no?
+
+4. **CONCRETENESS (15%)**
+   - Did they avoid vague language where specifics matter?
+   - Did they use rough estimates appropriately? (~5% vs ~80%)
+   - Did they give timelines when relevant?
+
+**BONUSES (20% of score):**
+- Framework usage (+1.0 if used appropriately, not forced)
+- Challenging the premise (+1.0 if done well)
+- Proposing better alternatives (+0.5)
+- Second-order thinking (+0.5)
+
+**RED FLAGS (DEDUCT HEAVILY):**
+- Vague language where specifics matter ("increase engagement" vs "DAU/MAU from 35% to 45%")
+- Accepting premise without question when it should be questioned
+- No trade-offs identified
+- Pattern matching (forcing frameworks where they don't fit)
+- Made-up precision ("will increase DAU by 14.7%")
+
+**SCORING SCALE:**
+9.5-10.0: Principal/Staff PM - Would use this as training material
+9.0-9.4: Senior/Lead PM - Reference quality
+8.0-8.9: Strong PM - Detailed reasoning, minor gaps
+7.0-7.9: Solid PM - Good thinking, needs more depth
+6.0-6.9: Junior PM - Surface-level, missing key insights
 5.0-5.9: Associate PM - Basic understanding, major gaps
-4.0-4.9: Needs coaching - Misses key concepts
-3.0-3.9: Not ready - Fundamental misunderstandings
-1.0-2.9: Test answer or incoherent
+4.0-4.9: Needs coaching - Fundamental issues
+1.0-3.9: Not ready - Incoherent or test answer
 
-**AUTOMATIC SCORE CAPS (STRICTLY ENFORCED):**
-- "This is a test" or placeholder text = 1.0 (instant fail)
-- Under 50 words = MAX 3.0 (insufficient depth)
-- No specific metrics or numbers = MAX 4.5 (lacks rigor)
-- No trade-offs mentioned = MAX 5.5 (shallow analysis)
-- No frameworks cited by name = MAX 6.5 (generic thinking)
-- No prioritization or ranking = MAX 6.0 (lack of judgment)
-- Doesn't question assumptions = MAX 7.0 (accepts premise blindly)
+**INSTANT FAILS:**
+- "This is a test" or placeholder = 1.0
+- Under 50 words = MAX 3.0
 
-**OUTPUT FORMAT (BE CONCISE - Use SHORT, PUNCHY Feedback):**
-Return ONLY valid JSON. Each strength/weakness must be under 100 characters. Be direct and brutal.
+**CRITICAL: NO ARBITRARY CAPS**
+An answer can score 9.5/10 with:
+- Zero framework names (if reasoning is exceptional)
+- Zero numbers (if the question doesn't need quantification)
+- Framework names are NICE TO HAVE, not required
+
+**OUTPUT FORMAT:**
+Return ONLY valid JSON. Quote their actual answer in feedback to prove you read it.
 
 {
-  "score": <0-10 with one decimal, e.g. 6.8>,
-  "strengths": ["<80 char max>", "<80 char max>", "<80 char max>"],
-  "weaknesses": ["<80 char max>", "<80 char max>", "<80 char max>"],
-  "detailedFeedback": "<150 char max - most critical insight>",
+  "score": <0-10 with one decimal>,
+  "strengths": ["Quote their words: 'X' - why this is strong", "...", "..."],
+  "weaknesses": ["Quote their words: 'Y' - how to upgrade: 'Z'", "...", "..."],
+  "detailedFeedback": "Start with what they did well. Then show 2-3 specific upgrades with examples from THEIR answer. Be constructive but honest.",
   "categoryScores": {"strategy": <1-10>, "metrics": <1-10>, "prioritization": <1-10>, "design": <1-10>},
   "skillScores": {"problem_framing": <1-10>, "user_empathy": <1-10>, "metrics_definition": <1-10>, "tradeoff_analysis": <1-10>, "prioritization": <1-10>, "strategic_thinking": <1-10>, "stakeholder_mgmt": <1-10>, "communication": <1-10>, "technical_judgment": <1-10>, "ambiguity_navigation": <1-10>, "systems_thinking": <1-10>, "market_sense": <1-10>, "experimentation": <1-10>, "risk_assessment": <1-10>}
 }
 
-REMEMBER: This evaluation develops SKILLS, not interview tactics. Be rigorous. Be harsh. Be specific.`;
+REMEMBER: Evaluate reasoning, not checklist completion. Be rigorous but fair.`;
 
     const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -379,130 +430,67 @@ REMEMBER: This evaluation develops SKILLS, not interview tactics. Be rigorous. B
       }
     );
 
-    console.log('Gemini response status:', geminiResponse.status);
-
     if (!geminiResponse.ok) {
       const errorBody = await geminiResponse.text();
       console.error('❌ Gemini API error:', errorBody);
-      throw new Error(`Gemini API failed with status ${geminiResponse.status}: ${errorBody}`);
+      throw new Error(`Gemini API failed`);
     }
 
     const geminiData = await geminiResponse.json();
     const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
-      console.error('❌ No text in AI response:', JSON.stringify(geminiData));
-      throw new Error('Invalid AI response - no text returned');
+      throw new Error('Invalid AI response');
     }
 
-    console.log('📄 Raw response length:', text.length);
-
-    // Parse JSON (responseMimeType should give us clean JSON, but add fallback)
     let feedback;
     try {
       feedback = JSON.parse(text);
-      console.log('✅ Direct JSON parse successful');
-    } catch (directParseError) {
-      console.log('⚠️ Direct parse failed, trying extraction...');
-      
-      // Fallback: Clean and extract
-      let cleanedText = text
-        .replace(/```json\s*/gi, '')
-        .replace(/```\s*/g, '')
-        .replace(/^[^{]*/, '')
-        .trim();
-      
-      // Find last complete closing brace
-      const lastBrace = cleanedText.lastIndexOf('}');
-      if (lastBrace !== -1) {
-        cleanedText = cleanedText.substring(0, lastBrace + 1);
-      }
-      
-      try {
-        feedback = JSON.parse(cleanedText);
-        console.log('✅ Extraction parse successful');
-      } catch (extractError) {
-        console.error('❌ All parsing failed');
-        console.error('First 500 chars:', text.substring(0, 500));
-        console.error('Last 500 chars:', text.substring(Math.max(0, text.length - 500)));
-        throw new Error('Could not parse AI response - invalid JSON');
-      }
+    } catch {
+      const cleanedText = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      feedback = JSON.parse(cleanedText);
     }
 
     if (!feedback.score || typeof feedback.score !== 'number') {
-      throw new Error('Invalid feedback structure - missing score');
+      throw new Error('Invalid feedback structure');
     }
 
-    // ===== CALCULATE ELO WITH QUALITY GATES AND DIFFICULTY MULTIPLIERS =====
+    // ===== CALCULATE ELO =====
     if (userEloRating && questionEloDifficulty) {
-      const actualScore = feedback.score / 10; // 0.0 to 1.0
-      
-      // Calculate expected performance based on rating difference
+      const actualScore = feedback.score / 10;
       const ratingDiff = questionEloDifficulty - userEloRating;
       const expectedScore = 1 / (1 + Math.pow(10, ratingDiff / 400));
       
       console.log(`🎯 Expected: ${(expectedScore * 10).toFixed(1)}/10, Actual: ${feedback.score}/10`);
       
-      // ===== QUALITY GATE: Absolute Performance Standards =====
-      // Poor answers (< 6/10) ALWAYS incur a penalty, regardless of difficulty
       let qualityPenalty = 0;
       if (feedback.score < 6.0) {
-        // Progressive penalty: 5.5/10 = -5, 5.0/10 = -10, 4.0/10 = -20, etc.
         qualityPenalty = -(6.0 - feedback.score) * 10;
-        console.log(`⚠️ Quality penalty: ${qualityPenalty} (score < 6.0)`);
+        console.log(`⚠️ Quality penalty: ${qualityPenalty}`);
       } else if (feedback.score >= 8.5) {
-        // Bonus for excellent answers
         qualityPenalty = (feedback.score - 8.5) * 5;
-        console.log(`✨ Quality bonus: +${qualityPenalty} (score >= 8.5)`);
+        console.log(`✨ Quality bonus: +${qualityPenalty}`);
       }
       
-      // ===== DIFFICULTY MULTIPLIER =====
-      // Harder questions = bigger point swings (both ways)
       let difficultyMultiplier = 1.0;
-      if (questionEloDifficulty >= 1700) {
-        difficultyMultiplier = 1.4; // Expert questions worth 40% more
-      } else if (questionEloDifficulty >= 1500) {
-        difficultyMultiplier = 1.2; // Senior PM questions worth 20% more
-      } else if (questionEloDifficulty <= 1000) {
-        difficultyMultiplier = 0.7; // Easy questions worth 30% less
-      }
+      if (questionEloDifficulty >= 1700) difficultyMultiplier = 1.4;
+      else if (questionEloDifficulty >= 1500) difficultyMultiplier = 1.2;
+      else if (questionEloDifficulty <= 1000) difficultyMultiplier = 0.7;
       
-      // ===== BASE K-FACTOR (Volatility) =====
-      // How much ratings can swing per game
-      let kFactor = 32; // Standard chess K-factor
+      let kFactor = 32;
+      if (userEloRating < 1000) kFactor = 50;
+      else if (userEloRating > 1800) kFactor = 24;
       
-      // New players (< 1000) should be more volatile (find their level faster)
-      if (userEloRating < 1000) {
-        kFactor = 50;
-      } else if (userEloRating > 1800) {
-        kFactor = 24; // Experts are more stable
-      }
-      
-      // ===== CALCULATE CHANGE =====
-      // Base ELO formula
       const baseChange = kFactor * (actualScore - expectedScore);
-      
-      // Apply difficulty multiplier to the base change
       const difficultyAdjustedChange = baseChange * difficultyMultiplier;
-      
-      // Add quality penalty/bonus (this is ADDITIVE, not multiplicative)
       const totalChange = difficultyAdjustedChange + qualityPenalty;
-      
-      // Round and cap (prevent huge swings)
-      const maxChange = 150;
-      const cappedChange = Math.max(-maxChange, Math.min(maxChange, Math.round(totalChange)));
-      
+      const cappedChange = Math.max(-150, Math.min(150, Math.round(totalChange)));
       const newRating = Math.max(800, Math.min(2200, userEloRating + cappedChange));
       
       feedback.eloChange = cappedChange;
       feedback.newEloRating = newRating;
       
-      console.log(`📊 ELO Change Breakdown:`);
-      console.log(`   Base change: ${baseChange.toFixed(1)}`);
-      console.log(`   Difficulty multiplier (${difficultyMultiplier}x): ${difficultyAdjustedChange.toFixed(1)}`);
-      console.log(`   Quality adjustment: ${qualityPenalty.toFixed(1)}`);
-      console.log(`   Final change: ${cappedChange > 0 ? '+' : ''}${cappedChange}`);
-      console.log(`   ${userEloRating} → ${newRating}`);
+      console.log(`📊 ELO: ${userEloRating} → ${newRating} (${cappedChange > 0 ? '+' : ''}${cappedChange})`);
     }
 
     return new Response(

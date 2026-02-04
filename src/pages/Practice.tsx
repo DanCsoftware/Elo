@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { supabase, Question } from '@/lib/supabase';
 import { evaluateAnswer } from '@/lib/gemini';
 import { useUserStats } from '@/hooks/useUserStats';
+import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { Loader2, TrendingUp, Minus, TrendingDown } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -18,6 +19,7 @@ const Practice = () => {
   const navigate = useNavigate();
   const { user, signInWithGoogle } = useAuth();
   const { stats } = useUserStats();
+  const { isApproved, canPractice, questionsUsed, questionsRemaining, loading: trialLoading } = useTrialStatus();
   
   const [question, setQuestion] = useState<Question | null>(null);
   const [answer, setAnswer] = useState('');
@@ -27,7 +29,6 @@ const Practice = () => {
   const [recentPerformance, setRecentPerformance] = useState<number[]>([]);
   const [difficultyPreference, setDifficultyPreference] = useState<DifficultyPreference>('matched');
   
-  // Prevent duplicate fetches
   const hasFetchedRef = useRef(false);
 
   // Load saved state from localStorage
@@ -259,6 +260,22 @@ const Practice = () => {
       // Update streak after successful submission
       await updateStreak();
 
+      // Increment trial question counter
+      if (isApproved) {
+        const { error: incrementError } = await supabase
+          .from('approved_users')
+          .update({ 
+            questions_used: questionsUsed + 1 
+          })
+          .eq('email', user.email);
+
+        if (incrementError) {
+          console.error('Error updating question count:', incrementError);
+        } else {
+          console.log(`✅ Question count updated: ${questionsUsed + 1}`);
+        }
+      }
+
       // Clear saved state after successful submit
       localStorage.removeItem('elo_current_question');
       localStorage.removeItem('elo_current_answer');
@@ -300,6 +317,7 @@ const Practice = () => {
     setTimeout(() => fetchAdaptiveQuestion(), 100);
   };
 
+  // Sign-in prompt
   if (!user) {
     return (
       <Layout>
@@ -311,14 +329,69 @@ const Practice = () => {
             </p>
           </div>
           <Button onClick={signInWithGoogle} size="lg">
-            Sign In with Google
+            Sign In with Email
           </Button>
         </div>
       </Layout>
     );
   }
 
-  if (loading) {
+  // Waitlist message (user not approved)
+  if (!trialLoading && !isApproved) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6 max-w-md mx-auto">
+          <div>
+            <h1 className="text-3xl font-bold mb-3">Access Required</h1>
+            <p className="text-muted-foreground text-lg mb-6">
+              Elo is currently in private beta.
+            </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              To get access, DM me on LinkedIn and I'll send you an invite to check it out!
+            </p>
+            <a 
+              href="https://www.linkedin.com/in/ddotc/" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-primary underline text-sm hover:text-primary/80"
+            >
+              Connect on LinkedIn →
+            </a>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Beta complete message (approved but out of questions)
+  if (!trialLoading && isApproved && !canPractice) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6 max-w-md mx-auto">
+          <div>
+            <h1 className="text-3xl font-bold mb-3">Beta Access Complete</h1>
+            <p className="text-muted-foreground text-lg mb-6">
+              You've completed your beta trial questions. Thanks for testing Elo!
+            </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              I'd love to hear your feedback. DM me on LinkedIn to share your thoughts or request more access.
+            </p>
+            <a 
+              href="https://linkedin.com/in/YOUR_LINKEDIN" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-primary underline text-sm hover:text-primary/80"
+            >
+              Share Feedback on LinkedIn →
+            </a>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Loading state
+  if (loading || trialLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-[400px]">
@@ -328,6 +401,7 @@ const Practice = () => {
     );
   }
 
+  // Error state
   if (error || !question) {
     return (
       <Layout>
@@ -343,6 +417,7 @@ const Practice = () => {
   const questionRating = question.elo_difficulty || 1400;
   const ratingDiff = questionRating - userRating;
 
+  // Normal practice UI (EXACT SAME AS BEFORE - NO CHANGES)
   return (
     <Layout>
       <div className="space-y-4 max-w-3xl mx-auto">

@@ -6,17 +6,15 @@ import SkillBar from '@/components/SkillBar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserStats } from '@/hooks/useUserStats';
-import { useGrowthAnalysis } from '@/hooks/useGrowthAnalysis';
 import { useRatingPercentile } from '@/hooks/useRatingPercentile';
 import { RatingChart } from '@/components/RatingChart';
+import { FocusAreas } from '@/components/FocusAreas';
 import { Loader2 } from 'lucide-react';
-import { FocusAreaCard } from '@/components/FocusAreaCard';
 import { supabase } from '@/lib/supabase';
 
 const Index = () => {
   const { user, signInWithGoogle } = useAuth();
   const { stats, loading } = useUserStats();
-  const { growthAreas, loading: growthLoading } = useGrowthAnalysis();
   const { percentile, totalUsers, loading: percentileLoading } = useRatingPercentile(stats?.eloRating || 1200);
   
   const [sessions, setSessions] = useState<any[]>([]);
@@ -116,19 +114,18 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Rating Journey - NEW! */}
+        {/* Rating Journey */}
         {stats && stats.totalSolved > 0 && (
           <section className="bg-card border border-border p-5 space-y-4">
-
-          {/* Percentile Badge */}
-          {!percentileLoading && percentile !== null && (
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-sm font-semibold text-primary">
-                Top {percentile}% of {totalUsers} users
-              </span>
-            </div>
-          )}
+            {/* Percentile Badge */}
+            {!percentileLoading && percentile !== null && (
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-sm font-semibold text-primary">
+                  Top {percentile}% of {totalUsers} users
+                </span>
+              </div>
+            )}
 
             {/* Rating Chart */}
             <RatingChart 
@@ -138,34 +135,13 @@ const Index = () => {
           </section>
         )}
 
-        {/* Focus Areas */}
-        {!growthLoading && growthAreas.length > 0 && stats && stats.totalSolved >= 3 && (
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wide">
-                Focus Areas
-              </h2>
-              <span className="text-xs text-muted-foreground">
-                Based on {stats.totalSolved} sessions
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {growthAreas.slice(0, 3).map(area => (
-                <FocusAreaCard
-                  key={area.area}
-                  area={area.area}
-                  severity={area.severity}
-                  frequency={area.frequency}
-                  recentTrend={area.recentTrend}
-                  recommendations={area.recommendations}
-                  examples={area.examples || []}
-                />
-              ))}
-            </div>
+        {/* NEW: Focus Areas - Using actual skill data */}
+        {stats && stats.totalSolved >= 5 && (
+          <section className="bg-card border border-border p-5">
+            <FocusAreas />
           </section>
         )}
-        
+
         {/* Elo Rating Display */}
         {stats && (
           <section className="bg-card border border-border p-5">
