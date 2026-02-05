@@ -125,7 +125,7 @@ Visit `http://localhost:5173`
 
 ## Usage
 
-1. **Sign In**: Click "Sign In with email"
+1. **Sign In**: Click "Sign In with Google"
 2. **Practice**: Answer PM interview questions
 3. **Get Evaluated**: Receive rigorous AI feedback with ELO rating change
 4. **Track Progress**: View your rating journey and percentile ranking

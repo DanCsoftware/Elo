@@ -25,13 +25,13 @@ serve(async (req) => {
     const requestType = url.searchParams.get('type') || 'evaluation';
     const requestBody = await req.json();
     
-// ===== ANSWER EVOLUTION =====
-if (requestType === 'evolution') {
-  console.log('Generating answer evolution...');
-  
-  const { question, userAnswer, score } = requestBody;
+    // ===== ANSWER EVOLUTION =====
+    if (requestType === 'evolution') {
+      console.log('Generating answer evolution...');
+      
+      const { question, userAnswer, score } = requestBody;
 
-  const evolutionPrompt = `You are helping a PM improve their answer from ${score}/10 to 9/10.
+      const evolutionPrompt = `You are helping a PM improve their answer from ${score}/10 to 9/10.
 
 QUESTION: ${question}
 
@@ -39,64 +39,114 @@ THEIR ANSWER:
 ${userAnswer}
 
 Generate 3-4 specific improvements. For EACH improvement:
-1. Quote 5-15 words from their answer
-2. Show the upgraded version
-3. Explain why in ONE sentence
+1. Quote a SHORT phrase from their answer (3-10 words)
+2. Show the upgraded version (20-30 words max)
+3. Explain why in ONE sentence (15 words max)
+
+CRITICAL RULES:
+- Quote EXACTLY from their answer - copy/paste, don't paraphrase
+- Keep quotes SHORT (3-10 words)
+- If you can't find a quote, use "approach" as the original
 
 Return ONLY valid JSON (no markdown, no preamble):
 {
   "improvements": [
     {
-      "original": "exact quote from their answer (5-15 words)",
-      "improved": "upgraded version (20-30 words max)",
-      "why": "one sentence explanation",
-      "impact": "+0.5" or "+1.0"
+      "original": "exact short quote from their answer",
+      "improved": "upgraded version",
+      "why": "one sentence why this is better",
+      "impact": "+0.5"
     }
   ]
 }
 
-Keep it concise. Focus on the BIGGEST impact improvements.`;
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+Example:
+{
+  "improvements": [
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: evolutionPrompt }] }],
-        generationConfig: { 
-          temperature: 0.7, 
-          maxOutputTokens: 2000, // Reduced from 3000
-          responseMimeType: "application/json"
-        },
-      }),
+      "original": "users default behavior",
+      "improved": "users' ingrained mental model from years of horizontal tabs (Chrome: 63% market share)",
+      "why": "Specificity with data shows deeper market understanding",
+      "impact": "+0.5"
     }
-  );
+  ]
+}`;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Evolution error:', errorText);
-    throw new Error('Failed to generate evolution');
-  }
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: evolutionPrompt }] }],
+            generationConfig: { 
+              temperature: 0.7, 
+              maxOutputTokens: 2000,
+              responseMimeType: "application/json"
+            },
+          }),
+        }
+      );
 
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  
-  let evolution;
-  try {
-    evolution = JSON.parse(text);
-  } catch (parseError) {
-    console.error('Parse error:', parseError);
-    console.error('Raw text:', text);
-    throw new Error('Failed to parse evolution response');
-  }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Evolution error:', errorText);
+        throw new Error('Failed to generate evolution');
+      }
 
-  // Don't generate full upgraded answer - just improvements
-  return new Response(
-    JSON.stringify({ improvements: evolution.improvements }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
-}
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (!text) {
+        console.error('No text in evolution response');
+        throw new Error('Empty evolution response');
+      }
+
+      let evolution;
+      try {
+        evolution = JSON.parse(text);
+      } catch (parseError) {
+        console.error('Parse error:', parseError);
+        console.error('Raw text:', text);
+        
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            evolution = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            throw new Error('Failed to parse evolution response');
+          }
+        } else {
+          throw new Error('No valid JSON found in evolution response');
+        }
+      }
+
+      if (!evolution.improvements || evolution.improvements.length === 0) {
+        console.error('No improvements in evolution:', evolution);
+        throw new Error('No improvements generated');
+      }
+
+      // Calculate realistic impact based on current score
+      const currentScore = score;
+      const targetScore = 9.0;
+      const gapToFill = targetScore - currentScore;
+      const impactPerImprovement = gapToFill / evolution.improvements.length;
+
+      // Assign realistic impacts
+      evolution.improvements = evolution.improvements.map((imp: any) => ({
+        original: imp.original,
+        improved: imp.improved,
+        why: imp.why,
+        impact: `+${impactPerImprovement.toFixed(1)}`
+      }));
+
+      console.log(`✅ Generated ${evolution.improvements.length} improvements (+${impactPerImprovement.toFixed(1)} each)`);
+
+      return new Response(
+        JSON.stringify({ improvements: evolution.improvements }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // ===== EXAMPLE ANSWER GENERATION =====
     if (requestType === 'example') {
@@ -170,18 +220,27 @@ QUESTION: ${question}
 CATEGORY: ${category}
 DIFFICULTY: ${difficulty}
 
-Generate a 9/10 answer (400-500 words) that would impress in a ${company.toUpperCase()} PM interview.
+Generate a 9/10 answer that would impress in a ${company.toUpperCase()} PM interview.
+
+LENGTH REQUIREMENTS:
+- Target: 800-1500 characters (roughly 150-250 words)
+- Minimum: 500 characters
+- Maximum: 2000 characters
+- CRITICAL: Complete all thoughts - do NOT end mid-sentence
+- If approaching 2000 chars, wrap up the current thought naturally
 
 STRUCTURE:
-1. Challenge the premise (if relevant) - WHY are we doing this?
-2. Ask clarifying questions
-3. Segment the problem (different users, use cases, contexts)
-4. Identify trade-offs and second-order effects
+1. Challenge the premise (1-2 sentences) - WHY are we doing this?
+2. Ask 2-3 clarifying questions
+3. Segment the problem (different users, use cases)
+4. Identify 1-2 key trade-offs
 5. Use rough estimates where concrete (avoid false precision)
-6. Propose alternatives or better solutions
-7. End with how you'd validate
+6. Propose recommendation
+7. End with validation approach (1-2 sentences)
 
-Write in plain text (no JSON, no markdown). Sound like a senior PM, not an AI.`;
+TONE: Sound like you're in a real interview - conversational, confident, concise. Not writing a blog post.
+
+Write in plain text (no JSON, no markdown). COMPLETE ALL THOUGHTS - no mid-sentence cutoffs.`;
 
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -192,7 +251,7 @@ Write in plain text (no JSON, no markdown). Sound like a senior PM, not an AI.`;
             contents: [{ parts: [{ text: examplePrompt }] }],
             generationConfig: { 
               temperature: 0.8, 
-              maxOutputTokens: 4096,
+              maxOutputTokens: 2000,
               responseMimeType: "text/plain"
             },
           }),
@@ -204,7 +263,25 @@ Write in plain text (no JSON, no markdown). Sound like a senior PM, not an AI.`;
       }
 
       const data = await response.json();
-      const exampleAnswer = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Failed to generate';
+      let exampleAnswer = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Failed to generate';
+
+      // Smart truncation
+      if (exampleAnswer.length > 2000) {
+        const truncated = exampleAnswer.substring(0, 1950);
+        const lastPeriod = truncated.lastIndexOf('.');
+        const lastQuestion = truncated.lastIndexOf('?');
+        const lastExclamation = truncated.lastIndexOf('!');
+        const lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
+        
+        if (lastSentenceEnd > 1500) {
+          exampleAnswer = truncated.substring(0, lastSentenceEnd + 1);
+        } else {
+          const lastSpace = truncated.lastIndexOf(' ');
+          exampleAnswer = truncated.substring(0, lastSpace) + '...';
+        }
+      }
+
+      console.log(`✅ Generated example (${exampleAnswer.length} chars)`);
 
       return new Response(
         JSON.stringify({ exampleAnswer }),
@@ -407,8 +484,7 @@ Return ONLY valid JSON. Quote their actual answer in feedback to prove you read 
   "score": <0-10 with one decimal>,
   "strengths": ["Quote their words: 'X' - why this is strong", "...", "..."],
   "weaknesses": ["Quote their words: 'Y' - how to upgrade: 'Z'", "...", "..."],
-  "detailedFeedback": "Start with what they did well. Then show 2-3 specific upgrades with examples from THEIR answer. Be constructive but honest.",
-  "categoryScores": {"strategy": <1-10>, "metrics": <1-10>, "prioritization": <1-10>, "design": <1-10>},
+  "detailedFeedback": "Write 2-3 actionable insights (150-200 words). Start with what they did well in 1-2 sentences. Then provide 2-3 specific improvements with concrete examples from THEIR answer. Use natural prose, not bullet points. Be constructive and specific. Example: 'You correctly identified the activation issue. To strengthen this: (1) Specify the exact metrics you'd track - instead of 'activation rate', say 'Day 1 activation: % who complete onboarding AND create first tab set'. (2) Your trade-off discussion mentions 'relieving adaptation' but misses the strategic cost - offering horizontal tabs dilutes Arc's unique brand identity and prevents users from discovering the vertical tab experience that drives your 60% higher retention. (3) Make your hypothesis explicit and falsifiable with clear success criteria.'",
   "skillScores": {"problem_framing": <1-10>, "user_empathy": <1-10>, "metrics_definition": <1-10>, "tradeoff_analysis": <1-10>, "prioritization": <1-10>, "strategic_thinking": <1-10>, "stakeholder_mgmt": <1-10>, "communication": <1-10>, "technical_judgment": <1-10>, "ambiguity_navigation": <1-10>, "systems_thinking": <1-10>, "market_sense": <1-10>, "experimentation": <1-10>, "risk_assessment": <1-10>}
 }
 

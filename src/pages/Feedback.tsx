@@ -9,6 +9,8 @@ import { Question } from '@/lib/supabase';
 import { FrameworkTerm } from '@/components/FrameworkTerm';
 import { toast } from 'sonner';
 import { CompanySelector } from '@/components/CompanySelector';
+import { AnnotatedAnswer } from '@/components/AnnotatedAnswer';
+import { SaveToPond } from '@/components/SaveToPond';
 
 interface LocationState {
   feedback: FeedbackResult;
@@ -53,37 +55,47 @@ const Feedback = () => {
   } | null>(null);
 
   const [showCategoryBreakdown, setShowCategoryBreakdown] = useState(false);
-  const [showYourAnswer, setShowYourAnswer] = useState(false);
 
-  const highlightFrameworks = (text: string) => {
-    const frameworks = [
-      "HEART", "5 Whys", "CIRCLES", "RICE", "Impact/Effort",
-      "NPS", "DAU/MAU", "activation", "retention", "cohort",
-      "funnel", "A/B test", "MVP", "product-market fit",
-      "user segmentation", "churn", "BLUF", "OKRs", "LTV/CAC",
-      "North Star Metric", "PMF", "TAM", "Moat", "Sprint",
-      "Backlog", "Tech Debt", "KPI", "Freemium", "SaaS",
-      "ARR", "NRR", "Persona", "Jobs to be Done"
-    ];
+  const highlightFrameworks = (text: string | any) => {
+  // Handle non-string inputs
+  if (!text) return '';
+  if (typeof text !== 'string') {
+    // If it's an array, join it
+    if (Array.isArray(text)) {
+      text = text.join('\n');
+    } else {
+      // Convert to string
+      text = String(text);
+    }
+  }
 
-    let result = text;
-    frameworks.forEach(term => {
-      const regex = new RegExp(`\\b${term}\\b`, 'gi');
-      result = result.replace(regex, `<framework>${term}</framework>`);
-    });
+  const frameworks = [
+    "HEART", "5 Whys", "CIRCLES", "RICE", "Impact/Effort",
+    "NPS", "DAU/MAU", "activation", "retention", "cohort",
+    "funnel", "A/B test", "MVP", "product-market fit",
+    "user segmentation", "churn", "BLUF", "OKRs", "LTV/CAC",
+    "North Star Metric", "PMF", "TAM", "Moat", "Sprint",
+    "Backlog", "Tech Debt", "KPI", "Freemium", "SaaS",
+    "ARR", "NRR", "Persona", "Jobs to be Done"
+  ];
 
-    return result.split('<framework>').map((part, i) => {
-      if (i === 0) return part;
-      const [term, ...rest] = part.split('</framework>');
-      return (
-        <span key={i}>
-          <FrameworkTerm term={term} />
-          {rest.join('')}
-        </span>
-      );
-    });
-  };
+  let result = text;
+  frameworks.forEach(term => {
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    result = result.replace(regex, `<framework>${term}</framework>`);
+  });
 
+  return result.split('<framework>').map((part, i) => {
+    if (i === 0) return part;
+    const [term, ...rest] = part.split('</framework>');
+    return (
+      <span key={i}>
+        <FrameworkTerm term={term} />
+        {rest.join('')}
+      </span>
+    );
+  });
+};
   const handleGenerateEvolution = async () => {
     if (!question || !answer || !feedback) return;
     
@@ -236,7 +248,7 @@ const Feedback = () => {
             </p>
           </div>
           <Button onClick={signInWithGoogle} size="lg">
-            Sign In with Email
+            Sign In with Google
           </Button>
         </div>
       </Layout>
@@ -266,7 +278,7 @@ const Feedback = () => {
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
               <div className="text-center">
                 <p className="font-semibold text-lg">
-                  {loadingExample ? 'Generating 9/10 Answer...' : 'Analyzing Your Answer...'}
+                  {loadingExample ? 'Generating Reference Answer...' : 'Analyzing Your Answer...'}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   {loadingExample 
@@ -290,7 +302,7 @@ const Feedback = () => {
           <p className="text-sm text-foreground leading-relaxed">{question.text}</p>
         </section>
 
-        {/* Elo Rating + Score + Actions */}
+        {/* Elo Rating + Score + Actions + Pushback */}
         <section className="bg-card border border-border p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
@@ -348,6 +360,82 @@ const Feedback = () => {
               </Button>
             </div>
           </div>
+
+          {/* PUSHBACK - Directly under score */}
+          {(showPushback || pushbackResult) && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <h3 className="text-sm font-semibold uppercase tracking-wide mb-3">
+                {pushbackResult ? 'Pushback Result' : 'Push Back on Score'}
+              </h3>
+
+              {showPushback && !pushbackResult && (
+                <div className="space-y-3">
+                  <textarea
+                    value={pushbackText}
+                    onChange={(e) => setPushbackText(e.target.value)}
+                    placeholder="Explain why you disagree. What did the evaluator miss? Be specific. (Max 500 characters)"
+                    className="w-full min-h-[120px] p-3 bg-background border border-border rounded-md text-sm resize-none"
+                    disabled={pushbackLoading}
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      {pushbackText.length} / 500 characters
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => { setShowPushback(false); setPushbackText(''); }}
+                        size="sm"
+                        variant="ghost"
+                        disabled={pushbackLoading}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handlePushback}
+                        size="sm"
+                        disabled={pushbackText.length > 500 || pushbackLoading}
+                      >
+                        {pushbackLoading ? (
+                          <><Loader2 className="w-4 h-4 animate-spin mr-2" />Evaluating...</>
+                        ) : (
+                          'Submit Pushback'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {pushbackResult && (
+                <div className={`p-4 rounded-md border ${
+                  pushbackResult.verdict === 'FULLY_ADJUSTED' ? 'bg-success/10 border-success/30' :
+                  pushbackResult.verdict === 'PARTIALLY_ADJUSTED' ? 'bg-warning/10 border-warning/30' :
+                  'bg-destructive/10 border-destructive/30'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold">
+                      {pushbackResult.verdict === 'FULLY_ADJUSTED' && '✅ Score Fully Adjusted'}
+                      {pushbackResult.verdict === 'PARTIALLY_ADJUSTED' && '⚠️ Partially Adjusted'}
+                      {pushbackResult.verdict === 'UPHELD' && '❌ Score Upheld'}
+                    </p>
+                    {pushbackResult.newScore !== feedback.score && (
+                      <p className="text-lg font-bold">
+                        {feedback.score} → {pushbackResult.newScore}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-sm mb-2">{pushbackResult.reasoning}</p>
+                  {pushbackResult.counterpoints.length > 0 && (
+                    <ul className="space-y-1 text-xs text-muted-foreground">
+                      {pushbackResult.counterpoints.map((point, i) => (
+                        <li key={i}>• {point}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Answer Evolution Section */}
@@ -384,7 +472,6 @@ const Feedback = () => {
 
             {showEvolution && evolution && (
               <div className="space-y-4 mt-4 pt-4 border-t border-primary/20">
-                {/* Improvements */}
                 <div className="space-y-3">
                   {evolution.improvements.map((improvement, i) => (
                     <div key={i} className="bg-background/60 border border-border rounded-md p-4">
@@ -422,7 +509,6 @@ const Feedback = () => {
                   ))}
                 </div>
 
-                {/* Score Impact Summary */}
                 <div className="flex items-center justify-between bg-success/10 border border-success/30 rounded p-3">
                   <span className="text-sm font-medium">
                     Make these {evolution.improvements.length} changes:
@@ -436,144 +522,29 @@ const Feedback = () => {
           </section>
         )}
 
-        {/* Your Answer - Collapsible */}
-        <section className="bg-card border border-border p-5">
-          <button
-            onClick={() => setShowYourAnswer(!showYourAnswer)}
-            className="w-full flex items-center justify-between text-left"
-          >
-            <h3 className="text-sm font-semibold uppercase tracking-wide">
-              Your Answer
-            </h3>
-            {showYourAnswer ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-          
-          {showYourAnswer && (
-            <div className="mt-3 pt-3 border-t border-border">
-              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {answer}
-              </p>
-            </div>
-          )}
-        </section>
-
-        {/* Pushback Section */}
-        {(showPushback || pushbackResult) && (
-          <section className="bg-card border border-border p-5 space-y-3">
-            <h3 className="text-sm font-semibold uppercase tracking-wide">
-              {pushbackResult ? 'Pushback Result' : 'Push Back on Score'}
-            </h3>
-
-            {showPushback && !pushbackResult && (
-              <div className="space-y-3">
-                <textarea
-                  value={pushbackText}
-                  onChange={(e) => setPushbackText(e.target.value)}
-                  placeholder="Explain why you disagree. What did the evaluator miss? Be specific. (Max 500 characters)"
-                  className="w-full min-h-[120px] p-3 bg-background border border-border rounded-md text-sm resize-none"
-                  disabled={pushbackLoading}
-                />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    {pushbackText.length} / 500 characters
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => { setShowPushback(false); setPushbackText(''); }}
-                      size="sm"
-                      variant="ghost"
-                      disabled={pushbackLoading}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handlePushback}
-                      size="sm"
-                      disabled={pushbackText.length > 500 || pushbackLoading}
-                    >
-                      {pushbackLoading ? (
-                        <><Loader2 className="w-4 h-4 animate-spin mr-2" />Evaluating...</>
-                      ) : (
-                        'Submit Pushback'
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {pushbackResult && (
-              <div className={`p-4 rounded-md border ${
-                pushbackResult.verdict === 'FULLY_ADJUSTED' ? 'bg-success/10 border-success/30' :
-                pushbackResult.verdict === 'PARTIALLY_ADJUSTED' ? 'bg-warning/10 border-warning/30' :
-                'bg-destructive/10 border-destructive/30'
-              }`}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold">
-                    {pushbackResult.verdict === 'FULLY_ADJUSTED' && '✅ Score Fully Adjusted'}
-                    {pushbackResult.verdict === 'PARTIALLY_ADJUSTED' && '⚠️ Partially Adjusted'}
-                    {pushbackResult.verdict === 'UPHELD' && '❌ Score Upheld'}
-                  </p>
-                  {pushbackResult.newScore !== feedback.score && (
-                    <p className="text-lg font-bold">
-                      {feedback.score} → {pushbackResult.newScore}
-                    </p>
-                  )}
-                </div>
-                <p className="text-sm mb-2">{pushbackResult.reasoning}</p>
-                {pushbackResult.counterpoints.length > 0 && (
-                  <ul className="space-y-1 text-xs text-muted-foreground">
-                    {pushbackResult.counterpoints.map((point, i) => (
-                      <li key={i}>• {point}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Strengths & Weaknesses */}
-        <section className="grid md:grid-cols-2 gap-4">
-          <div className="bg-card border border-border p-5 space-y-2">
-            <h3 className="text-sm font-semibold uppercase tracking-wide flex items-center gap-2">
-              <Check className="w-4 h-4 text-success" />
-              Strengths
-            </h3>
-            <ul className="space-y-2">
-              {feedback.strengths.map((strength, i) => (
-                <li key={i} className="text-sm text-muted-foreground pl-6 relative">
-                  <span className="absolute left-0 text-success">✓</span>
-                  {highlightFrameworks(strength)}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="bg-card border border-border p-5 space-y-2">
-            <h3 className="text-sm font-semibold uppercase tracking-wide flex items-center gap-2">
-              <X className="w-4 h-4 text-destructive" />
-              Areas to Improve
-            </h3>
-            <ul className="space-y-2">
-              {feedback.weaknesses.map((weakness, i) => (
-                <li key={i} className="text-sm text-muted-foreground pl-6 relative">
-                  <span className="absolute left-0 text-destructive">✗</span>
-                  {highlightFrameworks(weakness)}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {/* Detailed Feedback */}
-        <section className="bg-card border border-border p-5">
-          <h3 className="text-sm font-semibold uppercase tracking-wide mb-2">
-            Actionable Advice
+        {/* Your Answer with Inline Annotations */}
+        <section className="bg-card border border-border p-5 space-y-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide">
+            Your Answer
           </h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">
+          <AnnotatedAnswer 
+            answer={answer}
+            strengths={feedback.strengths}
+            weaknesses={feedback.weaknesses}
+          />
+        </section>
+
+        {/* Actionable Advice */}
+        <section className="bg-card border border-border p-5">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wide">
+              Actionable Advice
+            </h3>
+            <SaveToPond question={question.text} advice={feedback.detailedFeedback} />
+          </div>
+          <div className="text-sm text-muted-foreground leading-relaxed">
             {highlightFrameworks(feedback.detailedFeedback)}
-          </p>
+          </div>
         </section>
 
         {/* Category Breakdown */}
@@ -600,12 +571,16 @@ const Feedback = () => {
           )}
         </section>
 
-        {/* Example Answer */}
+        {/* Reference Answer from Company PM */}
         <section className="bg-card border border-border p-5 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold uppercase tracking-wide">Example 9/10 Answer</h3>
-              <p className="text-xs text-muted-foreground mt-1">See how a senior PM would answer</p>
+              <h3 className="text-sm font-semibold uppercase tracking-wide">
+                Reference Answer from {selectedCompany.charAt(0).toUpperCase() + selectedCompany.slice(1)} PM
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                AI-generated using {selectedCompany.charAt(0).toUpperCase() + selectedCompany.slice(1)}'s product thinking frameworks
+              </p>
             </div>
             {!showExample && (
               <Button onClick={handleGenerateExample} disabled={loadingExample} size="sm" variant="outline">

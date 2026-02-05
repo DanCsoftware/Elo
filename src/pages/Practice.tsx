@@ -329,7 +329,7 @@ const Practice = () => {
             </p>
           </div>
           <Button onClick={signInWithGoogle} size="lg">
-            Sign In with Email
+            Sign In with Google
           </Button>
         </div>
       </Layout>
