@@ -18,24 +18,37 @@ const Index = () => {
   const { percentile, totalUsers, loading: percentileLoading } = useRatingPercentile(stats?.eloRating || 1200);
   
   const [sessions, setSessions] = useState<any[]>([]);
+  const [resets, setResets] = useState<any[]>([]);
 
-  // Fetch sessions for rating chart
+  // Fetch sessions and resets for rating chart
   useEffect(() => {
     if (!user) return;
 
-    async function fetchSessions() {
-      const { data, error } = await supabase
+    async function fetchData() {
+      // Fetch sessions
+      const { data: sessionsData, error: sessionsError } = await supabase
         .from('user_sessions')
         .select('created_at, elo_after, elo_change')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true });
 
-      if (!error && data) {
-        setSessions(data);
+      if (!sessionsError && sessionsData) {
+        setSessions(sessionsData);
+      }
+
+      // Fetch resets
+      const { data: resetsData, error: resetsError } = await supabase
+        .from('elo_resets')
+        .select('reset_at, elo_before, elo_after')
+        .eq('user_id', user.id)
+        .order('reset_at', { ascending: true });
+
+      if (!resetsError && resetsData) {
+        setResets(resetsData);
       }
     }
 
-    fetchSessions();
+    fetchData();
   }, [user]);
 
   // Show sign-in prompt if not authenticated
@@ -130,6 +143,7 @@ const Index = () => {
             {/* Rating Chart */}
             <RatingChart 
               sessions={sessions}
+              resets={resets}
               currentRating={stats.eloRating}
             />
           </section>

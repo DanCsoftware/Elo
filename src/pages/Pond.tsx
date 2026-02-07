@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Note {
@@ -12,6 +12,14 @@ interface Note {
   content: string;
   created_at: string;
   updated_at: string;
+}
+
+interface AIReview {
+  grade: string;
+  summary: string;
+  fullReview: string;
+  notesToDelete: string[];
+  strongestNotes: string[];
 }
 
 const Pond = () => {
@@ -25,7 +33,8 @@ const Pond = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [analyzingAll, setAnalyzingAll] = useState(false);
-  const [aiReview, setAiReview] = useState<string | null>(null);
+  const [implementing, setImplementing] = useState(false);
+  const [aiReview, setAiReview] = useState<AIReview | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -151,10 +160,12 @@ const Pond = () => {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
       const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      const allNotesContent = notes.map(n => `### ${n.title}\n${n.content}`).join('\n\n---\n\n');
+      const allNotesContent = notes.map((n, idx) => 
+        `Note ${idx + 1}: ${n.title}\n${n.content}`
+      ).join('\n\n---\n\n');
       
       const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/evaluate-answer?type=analyze-pond`,
+        `${SUPABASE_URL}/functions/v1/evaluate-answer?type=analyze-pond-advanced`,
         {
           method: 'POST',
           headers: {
@@ -163,6 +174,7 @@ const Pond = () => {
           },
           body: JSON.stringify({
             notesContent: allNotesContent,
+            noteCount: notes.length,
           }),
         }
       );
@@ -172,13 +184,43 @@ const Pond = () => {
       }
 
       const data = await response.json();
-      setAiReview(data.review);
+      
+      // Parse the review
+      const reviewText = data.review || '';
+      const gradeMatch = reviewText.match(/Grade:\s*([A-F][+-]?)/i);
+      const grade = gradeMatch ? gradeMatch[1] : 'B';
+      
+      setAiReview({
+        grade,
+        summary: reviewText.substring(0, 150) + '...',
+        fullReview: reviewText,
+        notesToDelete: [],
+        strongestNotes: [],
+      });
+      
       toast.success('Analysis complete!');
     } catch (error) {
       console.error('Error analyzing notes:', error);
       toast.error('Failed to analyze notes');
     } finally {
       setAnalyzingAll(false);
+    }
+  };
+
+  const implementRecommendations = async () => {
+    if (!aiReview || !user) return;
+
+    setImplementing(true);
+    try {
+      // For now, just show a success message
+      // In the future, this would call an AI endpoint to actually modify notes
+      toast.success('Recommendations noted! Consider making these changes manually for now.');
+      setAiReview(null);
+    } catch (error) {
+      console.error('Error implementing recommendations:', error);
+      toast.error('Failed to implement changes');
+    } finally {
+      setImplementing(false);
     }
   };
 
@@ -201,6 +243,13 @@ const Pond = () => {
       setEditContent(selectedNote.content);
     }
     setIsEditing(false);
+  };
+
+  const getGradeColor = (grade: string) => {
+    if (grade.startsWith('A')) return 'text-success';
+    if (grade.startsWith('B')) return 'text-primary';
+    if (grade.startsWith('C')) return 'text-warning';
+    return 'text-destructive';
   };
 
   if (!user) {
@@ -238,8 +287,11 @@ const Pond = () => {
         <div className="w-80 bg-card border border-border rounded-lg p-4 flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold">🦆 The Pond</h2>
-              <p className="text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-primary"></div>
+                <h2 className="text-lg font-semibold">The Pond</h2>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
                 {notes.length} {notes.length === 1 ? 'note' : 'notes'} • Synced to cloud
               </p>
             </div>
@@ -281,11 +333,12 @@ const Pond = () => {
                 ))}
               </div>
 
-              {/* Subtle Review Button */}
-              <button
+              {/* Review Button */}
+              <Button
                 onClick={analyzeAllNotes}
                 disabled={analyzingAll}
-                className="mt-4 w-full bg-secondary/50 hover:bg-secondary text-foreground font-medium py-2.5 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm border border-border"
+                variant="outline"
+                className="mt-4 w-full gap-2"
               >
                 {analyzingAll ? (
                   <>
@@ -293,16 +346,78 @@ const Pond = () => {
                     Analyzing...
                   </>
                 ) : (
-                  'Review Note Quality'
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Review Note Quality
+                  </>
                 )}
-              </button>
+              </Button>
             </>
           )}
         </div>
 
         {/* Main Editor */}
         <div className="flex-1 bg-card border border-border rounded-lg p-6 flex flex-col">
-          {!selectedNote ? (
+          {aiReview ? (
+            /* AI Review Results */
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Note Quality Review</h2>
+                <Button variant="ghost" size="sm" onClick={() => setAiReview(null)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Grade */}
+              <div className="flex items-center gap-4 p-4 bg-secondary/30 rounded-lg border border-border">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground mb-1">Overall Grade</p>
+                  <p className={`text-6xl font-bold ${getGradeColor(aiReview.grade)}`}>
+                    {aiReview.grade}
+                  </p>
+                </div>
+                <div className="flex-1 border-l border-border pl-4">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {aiReview.summary}
+                  </p>
+                </div>
+              </div>
+
+              {/* AI Feedback */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">AI Analysis</h3>
+                <div className="bg-secondary/20 rounded-lg p-4 border border-border">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                    {aiReview.fullReview}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4 border-t border-border">
+                <Button 
+                  onClick={implementRecommendations}
+                  disabled={implementing}
+                  className="gap-2"
+                >
+                  {implementing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Implementing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Implement Recommendations
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={() => setAiReview(null)}>
+                  Keep As Is
+                </Button>
+              </div>
+            </div>
+          ) : !selectedNote ? (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <p className="text-lg">Select a note or create a new one</p>
@@ -386,29 +501,6 @@ const Pond = () => {
                   </div>
                 )}
               </div>
-
-              {/* AI Review Section - Updated with Penguin */}
-              {aiReview && !isEditing && (
-                <div className="mt-4 pt-4 border-t border-border">
-                  <div className="bg-gradient-to-r from-primary/5 to-primary/10 border-l-4 border-primary rounded-md p-4">
-                    <div className="flex items-start gap-3">
-                      <img 
-                        src="https://pic.funnygifsbox.com/uploads/2019/03/funnygifsbox.com-2019-03-12-11-52-11-28.gif"
-                        alt="Penguin"
-                        className="w-10 h-10 object-contain flex-shrink-0 mt-1"
-                      />
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold text-primary mb-2">
-                          Senior PM Review
-                        </p>
-                        <p className="text-sm leading-relaxed text-foreground">
-                          {aiReview}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </div>

@@ -7,6 +7,9 @@ interface RatingDataPoint {
   date: string;
   rating: number;
   change: number;
+  isReset?: boolean;
+  resetFrom?: number;
+  timestamp: number; // Add for sorting
 }
 
 interface RatingChartProps {
@@ -15,16 +18,21 @@ interface RatingChartProps {
     elo_after?: number;
     elo_change?: number;
   }>;
+  resets?: Array<{
+    reset_at: string;
+    elo_before: number;
+    elo_after: number;
+  }>;
   currentRating: number;
 }
 
-export function RatingChart({ sessions, currentRating }: RatingChartProps) {
+export function RatingChart({ sessions, resets = [], currentRating }: RatingChartProps) {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('30d');
 
   // Process session data into chart points
   const chartData = useMemo(() => {
     if (!sessions || sessions.length === 0) {
-      return [{ date: 'Now', rating: currentRating, change: 0 }];
+      return [{ date: 'Now', rating: currentRating, change: 0, timestamp: Date.now() }];
     }
 
     // Filter by time range
@@ -38,26 +46,71 @@ export function RatingChart({ sessions, currentRating }: RatingChartProps) {
       cutoffDate.setTime(0); // All time
     }
 
+    // Filter and clean sessions
     const filteredSessions = sessions
-      .filter(s => s.elo_after !== undefined && new Date(s.created_at) >= cutoffDate)
+      .filter(s => {
+        // Only include sessions with valid elo_after
+        if (s.elo_after === undefined || s.elo_after === null) return false;
+        // Only include sessions within time range
+        if (new Date(s.created_at) < cutoffDate) return false;
+        // Filter out impossible ratings
+        if (s.elo_after < 800 || s.elo_after > 2200) return false;
+        return true;
+      })
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
     if (filteredSessions.length === 0) {
-      return [{ date: 'Now', rating: currentRating, change: 0 }];
+      return [{ date: 'Now', rating: currentRating, change: 0, timestamp: Date.now() }];
     }
 
-    // Create data points
-    const points: RatingDataPoint[] = filteredSessions.map(session => ({
-      date: new Date(session.created_at).toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric' 
-      }),
-      rating: session.elo_after!,
-      change: session.elo_change || 0,
-    }));
+    // Create reset lookup map
+    const resetMap = new Map(
+      resets
+        .filter(r => new Date(r.reset_at) >= cutoffDate)
+        .map(r => {
+          const resetDate = new Date(r.reset_at);
+          return [
+            resetDate.toISOString().split('T')[0],
+            { from: r.elo_before, to: r.elo_after, timestamp: resetDate.getTime() }
+          ];
+        })
+    );
+
+    // Create data points with deduplication
+    const pointsMap = new Map<string, RatingDataPoint>();
+    
+    filteredSessions.forEach(session => {
+      const sessionDate = new Date(session.created_at);
+      const dateKey = sessionDate.toISOString().split('T')[0];
+      const timestamp = sessionDate.getTime();
+      
+      const resetInfo = resetMap.get(dateKey);
+      
+      const point: RatingDataPoint = {
+        date: sessionDate.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        }),
+        rating: session.elo_after!,
+        change: session.elo_change || 0,
+        timestamp,
+        isReset: !!resetInfo,
+        resetFrom: resetInfo?.from,
+      };
+
+      // Keep only the latest point per day
+      const existingPoint = pointsMap.get(dateKey);
+      if (!existingPoint || timestamp > existingPoint.timestamp) {
+        pointsMap.set(dateKey, point);
+      }
+    });
+
+    // Convert map to sorted array
+    const points = Array.from(pointsMap.values())
+      .sort((a, b) => a.timestamp - b.timestamp);
 
     return points;
-  }, [sessions, currentRating, timeRange]);
+  }, [sessions, resets, currentRating, timeRange]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -69,18 +122,17 @@ export function RatingChart({ sessions, currentRating }: RatingChartProps) {
     const lastRating = chartData[chartData.length - 1].rating;
     const change = lastRating - firstRating;
 
+    // Prevent division by zero and infinity
+    let percentChange = 0;
+    if (firstRating > 0 && change !== 0) {
+      percentChange = ((change / firstRating) * 100);
+    }
+    
+    const peak = Math.max(...chartData.map(d => d.rating));
+    const low = Math.min(...chartData.map(d => d.rating));
 
-  // Prevent division by zero and infinity
-  let percentChange = 0;
-  if (firstRating > 0 && change !== 0) {
-    percentChange = ((change / firstRating) * 100);
-  }
-  
-  const peak = Math.max(...chartData.map(d => d.rating));
-  const low = Math.min(...chartData.map(d => d.rating));
-
-  return { change, percentChange, peak, low };
-}, [chartData, currentRating]);
+    return { change, percentChange, peak, low };
+  }, [chartData, currentRating]);
 
   const getRatingTier = (rating: number) => {
     if (rating < 1000) return 'Entry Level';
@@ -90,6 +142,36 @@ export function RatingChart({ sessions, currentRating }: RatingChartProps) {
     if (rating < 1800) return 'Staff PM';
     if (rating < 2000) return 'Principal';
     return 'Legendary';
+  };
+
+  // Custom tooltip to show reset info
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload || !payload.length) return null;
+
+    const data = payload[0].payload;
+    
+    return (
+      <div className="bg-popover border border-border rounded-md p-3 shadow-lg">
+        <p className="text-xs text-muted-foreground mb-1">{data.date}</p>
+        {data.isReset ? (
+          <>
+            <p className="text-sm font-semibold text-warning mb-1">🔄 Elo Reset</p>
+            <p className="text-xs text-muted-foreground">
+              {data.resetFrom} → {data.rating}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-lg font-bold text-primary">{data.rating}</p>
+            {data.change !== 0 && (
+              <p className={`text-xs ${data.change > 0 ? 'text-success' : 'text-destructive'}`}>
+                {data.change > 0 ? '+' : ''}{data.change}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -158,22 +240,37 @@ export function RatingChart({ sessions, currentRating }: RatingChartProps) {
               style={{ fontSize: '12px' }}
               domain={['dataMin - 50', 'dataMax + 50']}
             />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#1a1a1a',
-                border: '1px solid #333',
-                borderRadius: '6px',
-                fontSize: '12px',
-              }}
-              labelStyle={{ color: '#888' }}
-              formatter={(value: number) => [value.toFixed(0), 'Rating']}
-            />
+            <Tooltip content={<CustomTooltip />} />
             <Line
               type="monotone"
               dataKey="rating"
               stroke="#6366f1"
               strokeWidth={3}
-              dot={{ fill: '#6366f1', r: 4 }}
+              dot={(props: any) => {
+                const { cx, cy, payload } = props;
+                if (payload.isReset) {
+                  // Reset point - orange/yellow dot
+                  return (
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={6}
+                      fill="#f59e0b"
+                      stroke="#ffffff"
+                      strokeWidth={2}
+                    />
+                  );
+                }
+                // Normal point - blue dot
+                return (
+                  <circle
+                    cx={cx}
+                    cy={cy}
+                    r={4}
+                    fill="#6366f1"
+                  />
+                );
+              }}
               activeDot={{ r: 6 }}
             />
           </LineChart>

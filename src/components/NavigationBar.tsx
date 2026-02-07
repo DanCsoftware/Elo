@@ -23,10 +23,15 @@ const NavigationBar = () => {
               alt="Duck mascot"
               className="w-8 h-8 object-contain"
             />
-            {/* ELO Text - Technical Font */}
-            <span className="text-2xl font-bold tracking-tight text-foreground" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-              Elo
-            </span>
+            {/* ELO Text with Motto */}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-2xl font-bold tracking-tight text-foreground" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                Elo
+              </span>
+              <span className="text-[10px] font-medium tracking-[0.15em] uppercase text-primary/60" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                Onwards and Upwards
+              </span>
+            </div>
           </Link>
 
           {/* Navigation */}
@@ -50,12 +55,12 @@ const NavigationBar = () => {
               >
                 History
               </Link>
-              <Link
-                to="/pond"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                🦆 The Pond
-              </Link>
+            <Link
+              to="/pond"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              The Pond
+            </Link>
 
               {/* User Menu */}
               <div className="flex items-center gap-3 ml-3 pl-3 border-l border-border">

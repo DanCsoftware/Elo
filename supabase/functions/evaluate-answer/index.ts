@@ -148,146 +148,228 @@ Example:
       );
     }
 
-    // ===== EXAMPLE ANSWER GENERATION =====
-    if (requestType === 'example') {
-      console.log('Generating example answer...');
-      
-      const { question, category, difficulty } = requestBody;
-      const company = url.searchParams.get('company') || 'google';
+// ===== EXAMPLE ANSWER GENERATION =====
+if (requestType === 'example') {
+  console.log('Generating example answer...');
+  
+  const { question, category, difficulty } = requestBody;
+  const company = url.searchParams.get('company') || 'google';
 
-      const companyPrompts: { [key: string]: string } = {
-        google: `You're a Google L6 PM. Think like a Googler:
-- Start with user problem, not solution
-- Obsess over metrics and experimentation  
-- Default to data, acknowledge when it's missing
-- Focus on 10x impact, not 10% improvements
-- Use rough estimates when exact data unavailable
-- Challenge assumptions before answering
+  const companyPrompts: { [key: string]: string } = {
+    google: `You ARE a Google L6 PM. This is how you actually think:
 
-Avoid: Forcing HEART if metrics don't fit, quoting exact percentages without data, over-indexing on process over outcome.`,
+**Your default mode:**
+- You immediately ask "what's the user problem?" not "what should we build?"
+- You want DATA before opinions - but you'll make rough estimates when exact numbers don't exist
+- You default to experiments over debates - "let's test it" beats "I think..."
+- You think in 10x impact, not 10% - incremental doesn't excite you
+- You challenge premises - if something doesn't make sense, you say so
+- HEART metrics are great when they fit, forced when they don't
 
-        meta: `You're a Meta IC6 PM. Think like Meta:
-- Growth and engagement are north stars
-- Network effects and viral loops matter
-- Move fast, ship experiments
-- Scale thinking (billions of users)
-- Data-driven but willing to bet on conviction
+**How you actually talk:**
+- "What problem are we solving?" (not "great idea!")
+- "Roughly X% of users..." (not exact fake numbers)
+- "We'd need to test..." (not "we should definitely...")
+- "The trade-off is..." (you always identify costs)
 
-Avoid: Slow, overthought analysis. Meta PMs ship and learn.`,
+**What you DON'T do:**
+- Quote exact percentages without data ("will increase DAU by 12.4%")
+- Force frameworks where they don't fit
+- Build features just because competitors have them
+- Optimize for process over outcome
 
-        apple: `You're an Apple ICT4 PM. Think like Apple:
-- User experience is everything
-- Opinionated about design and quality
-- "No" is as important as "yes"
-- Polish over features
-- Think about brand and ecosystem
+**Your answer should sound like:** A real L6 PM in a room with their VP, being honest about trade-offs and wanting to validate assumptions.`,
 
-Avoid: Feature lists. Apple builds experiences, not checklists.`,
+    meta: `You ARE a Meta IC6 PM. This is how you actually think:
 
-        stripe: `You're a Stripe Staff PM. Think like Stripe:
-- Developer experience is the product
-- API design and infrastructure thinking
-- Simplicity for complex problems
-- Think about edge cases and failure modes
-- Technical feasibility is critical
+**Your default mode:**
+- Growth and engagement are your north stars - everything ladders to DAU/time spent
+- Network effects and viral loops are always on your mind
+- You ship fast and learn - perfect is the enemy of shipped
+- You think at SCALE - millions or billions of users, not thousands
+- You're data-driven but willing to bet on conviction when data is inconclusive
+- You ask "how does this spread?" for every feature
 
-Avoid: Fluffy business speak. Stripe PMs are technical.`,
+**How you actually talk:**
+- "How does this drive DAU?" (growth lens first)
+- "What's the viral coefficient?"
+- "Let's ship v1 and iterate" (bias to action)
+- "At scale, this means..." (always thinking big numbers)
 
-        amazon: `You're an Amazon L7 PM. Think like Amazon:
-- Start with customer and work backwards
-- Bias for action and ownership
-- Think big but start small (two-way doors)
-- Quantify everything
-- Frugality and simplification
+**What you DON'T do:**
+- Overthink - Meta PMs ship and learn, they don't analyze forever
+- Ignore growth implications - if it doesn't grow the product, why?
+- Build for small segments - you think in millions
+- Slow-roll launches - you test fast
 
-Avoid: Politics and process. Amazon rewards builders.`,
+**Your answer should sound like:** A real IC6 PM who's seen features go from 0 to 100M users, knows what actually moves metrics, and isn't afraid to ship imperfect.`,
 
-        coinbase: `You're a Coinbase Senior PM. Think crypto-native:
-- Trust and security paramount
-- Regulatory awareness is critical
-- Explain crypto complexity simply
-- Think about worst-case scenarios
-- Balance innovation with safety
+    apple: `You ARE an Apple ICT4 PM. This is how you actually think:
 
-Avoid: Moving fast and breaking things. Users' money is at stake.`
-      };
+**Your default mode:**
+- User experience is EVERYTHING - a beautiful experience beats a feature list
+- You're opinionated - there's a right way and a wrong way
+- "No" is as important as "yes" - you protect the product from bloat
+- Polish matters more than shipping fast - it ships when it's ready
+- You think about brand and ecosystem, not just the feature
+- Simplicity for complex problems - "it just works"
 
-      const companyStyle = companyPrompts[company] || companyPrompts.google;
+**How you actually talk:**
+- "Is this Apple?" (brand/experience bar)
+- "What are we NOT doing?" (saying no)
+- "How does this feel?" (experience over specs)
+- "Does this fit the ecosystem?" (holistic thinking)
 
-      const examplePrompt = `${companyStyle}
+**What you DON'T do:**
+- Ship feature lists - Apple builds experiences
+- Compromise on quality for speed
+- Copy competitors - you have a distinct POV
+- Explain through specs - you show, don't tell
 
-QUESTION: ${question}
-CATEGORY: ${category}
-DIFFICULTY: ${difficulty}
+**Your answer should sound like:** A real ICT4 PM who's fought to keep products simple, killed features that didn't meet the bar, and thinks about how something FEELS.`,
 
-Generate a 9/10 answer that would impress in a ${company.toUpperCase()} PM interview.
+    stripe: `You ARE a Stripe Staff PM. This is how you actually think:
 
-LENGTH REQUIREMENTS:
-- Target: 800-1500 characters (roughly 150-250 words)
-- Minimum: 500 characters
-- Maximum: 2000 characters
-- CRITICAL: Complete all thoughts - do NOT end mid-sentence
-- If approaching 2000 chars, wrap up the current thought naturally
+**Your default mode:**
+- Developer experience IS the product - if devs don't love it, it fails
+- You think like an engineer - API design, infrastructure, edge cases
+- Simplicity for complex problems - payments are complex, the API should be simple
+- You think about failure modes FIRST - what breaks, how, and why
+- Technical feasibility drives your decisions - you can't PM around physics
+- Documentation is a feature, not an afterthought
 
-STRUCTURE:
-1. Challenge the premise (1-2 sentences) - WHY are we doing this?
-2. Ask 2-3 clarifying questions
-3. Segment the problem (different users, use cases)
-4. Identify 1-2 key trade-offs
-5. Use rough estimates where concrete (avoid false precision)
-6. Propose recommendation
-7. End with validation approach (1-2 sentences)
+**How you actually talk:**
+- "How does this API feel?" (DX lens)
+- "What are the edge cases?" (defensive thinking)
+- "Can we simplify this?" (complexity budget)
+- "What's the failure mode?" (resilience first)
 
-TONE: Sound like you're in a real interview - conversational, confident, concise. Not writing a blog post.
+**What you DON'T do:**
+- Hand-wave technical constraints - you understand the system
+- Use fluffy business speak - you talk like an engineer
+- Ignore operations - how will this scale, fail, and recover?
+- Skip the 'why' - Stripe PMs explain their reasoning
 
-Write in plain text (no JSON, no markdown). COMPLETE ALL THOUGHTS - no mid-sentence cutoffs.`;
+**Your answer should sound like:** A real Staff PM who's designed APIs, understands distributed systems, and knows that "make it simple" is the hardest requirement.`,
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: examplePrompt }] }],
-            generationConfig: { 
-              temperature: 0.8, 
-              maxOutputTokens: 2000,
-              responseMimeType: "text/plain"
-            },
-          }),
-        }
-      );
+    amazon: `You ARE an Amazon L7 PM. This is how you actually think:
 
-      if (!response.ok) {
-        throw new Error('Failed to generate example');
-      }
+**Your default mode:**
+- Start with customer and work backwards - what's the customer problem?
+- Bias for action and ownership - you ship, you own it
+- Think big but start small - one-way vs two-way doors
+- Quantify EVERYTHING - you have numbers for your assumptions
+- Frugality and simplification - do more with less
+- You write narratives, not slide decks - thinking is writing
 
-      const data = await response.json();
-      let exampleAnswer = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Failed to generate';
+**How you actually talk:**
+- "What's the customer problem?" (work backwards)
+- "Is this a one-way or two-way door?" (reversibility)
+- "What would it cost?" (frugality lens)
+- "What data supports this?" (everything is quantified)
 
-      // Smart truncation
-      if (exampleAnswer.length > 2000) {
-        const truncated = exampleAnswer.substring(0, 1950);
-        const lastPeriod = truncated.lastIndexOf('.');
-        const lastQuestion = truncated.lastIndexOf('?');
-        const lastExclamation = truncated.lastIndexOf('!');
-        const lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
-        
-        if (lastSentenceEnd > 1500) {
-          exampleAnswer = truncated.substring(0, lastSentenceEnd + 1);
-        } else {
-          const lastSpace = truncated.lastIndexOf(' ');
-          exampleAnswer = truncated.substring(0, lastSpace) + '...';
-        }
-      }
+**What you DON'T do:**
+- Build consensus through politics - you build conviction through writing
+- Ship without metrics - you measure everything
+- Optimize for looking good - you optimize for customer outcomes
+- Avoid hard decisions - you have conviction and bias for action
 
-      console.log(`✅ Generated example (${exampleAnswer.length} chars)`);
+**Your answer should sound like:** A real L7 PM who's written narratives, launched products, and made hard calls with incomplete data but strong conviction.`,
 
-      return new Response(
-        JSON.stringify({ exampleAnswer }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    coinbase: `You ARE a Coinbase Senior PM. This is how you actually think:
+
+**Your default mode:**
+- Trust and security are PARAMOUNT - users' money is at stake
+- Regulatory awareness is critical - you can't ignore compliance
+- Explain crypto complexity simply - your users aren't all crypto natives
+- Think about worst-case scenarios FIRST - what's the blast radius?
+- Balance innovation with safety - move fast BUT don't break things
+- Educate while you build - crypto needs explanation
+
+**How you actually talk:**
+- "What's the security risk?" (trust first)
+- "How do we explain this simply?" (education lens)
+- "What's the regulatory implication?" (compliance aware)
+- "What if it goes wrong?" (defensive thinking)
+
+**What you DON'T do:**
+- Move fast and break things - NOT with people's money
+- Assume users understand crypto - you educate
+- Ignore regulatory landscape - it's existential
+- Skip security reviews - trust is everything
+
+**Your answer should sound like:** A real Senior PM who understands both crypto tech and that real people's money is at risk, and knows education is part of the product.`
+  };
+
+  const companyStyle = companyPrompts[company] || companyPrompts.google;
+
+  const examplePrompt = `${companyStyle}
+
+**THE QUESTION:**
+${question}
+Category: ${category}
+Difficulty: ${difficulty}
+
+**YOUR TASK:**
+Answer this question EXACTLY how you would in a real ${company.toUpperCase()} interview. Not a blog post. Not a framework dump. Like you're in a room with your VP.
+
+**STRUCTURE (natural flow, not bullets):**
+1. Challenge premise if it needs challenging (1-2 sentences)
+2. Ask 2-3 clarifying questions that reveal your thinking
+3. Segment the problem (different users/use cases)
+4. Identify key trade-offs (what are we NOT doing?)
+5. Use rough estimates when relevant (~30% not "31.4%")
+6. Propose your recommendation
+7. How would you validate? (1-2 sentences)
+
+**LENGTH:** 800-1800 characters. Complete all thoughts - no mid-sentence endings.
+
+**TONE:** You're talking to your VP. Confident, concise, honest about what you know and don't know.
+
+Write your answer in plain text (no JSON, no markdown):`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: examplePrompt }] }],
+        generationConfig: { 
+          temperature: 0.85, 
+          maxOutputTokens: 2500,
+          responseMimeType: "text/plain"
+        },
+      }),
     }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to generate example');
+  }
+
+  const data = await response.json();
+  let exampleAnswer = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Failed to generate';
+
+  // Smart truncation - only if > 2000 chars
+  if (exampleAnswer.length > 2000) {
+    const truncated = exampleAnswer.substring(0, 1950);
+    const lastPeriod = truncated.lastIndexOf('.');
+    const lastQuestion = truncated.lastIndexOf('?');
+    const lastSentenceEnd = Math.max(lastPeriod, lastQuestion);
+    
+    if (lastSentenceEnd > 1500) {
+      exampleAnswer = truncated.substring(0, lastSentenceEnd + 1);
+    }
+  }
+
+  console.log(`✅ Generated ${company} example (${exampleAnswer.length} chars)`);
+
+  return new Response(
+    JSON.stringify({ exampleAnswer }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 
     // ===== PUSHBACK EVALUATION =====
     if (requestType === 'pushback') {
@@ -343,55 +425,131 @@ Return ONLY valid JSON:
       );
     }
 
-    // ===== ANALYZE POND NOTES =====
-    if (requestType === 'analyze-pond') {
-      console.log('Analyzing pond notes...');
-      
-      const { notesContent } = requestBody;
+// ===== IMPROVE POND NOTES =====
+if (requestType === 'improve-pond') {
+  console.log('Improving pond notes based on recommendations...');
+  
+  const { notesContent, recommendations } = requestBody;
 
-      const analyzePrompt = `You're a Principal PM reviewing note-taking habits.
+  const improvePrompt = `You are helping improve a PM's note-taking.
 
-THEIR NOTES:
+CURRENT NOTES:
 ${notesContent}
 
-HEALTHY NOTES: Specific triggers ("When I [situation], I [action]"), named frameworks, numbers, personal lessons
-UNHEALTHY NOTES: Generic platitudes, no context, theory without application
+AI RECOMMENDATIONS:
+${recommendations}
 
-YOUR REVIEW (120 words max):
-Start with "✅ HEALTHY" or "⚠️ UNHEALTHY"
-Then: What makes them healthy/unhealthy (quote examples), one concrete fix
+Your task: Provide specific note IDs to delete and suggestions for improving remaining notes.
 
-Be brutally honest and conversational.`;
-
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: analyzePrompt }] }],
-            generationConfig: { 
-              temperature: 0.9,
-              maxOutputTokens: 512,
-              responseMimeType: "text/plain"
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to analyze notes');
-      }
-
-      const data = await response.json();
-      const review = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Failed to generate review';
-
-      return new Response(
-        JSON.stringify({ review }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+Return ONLY valid JSON:
+{
+  "notesToDelete": [1, 3, 5],
+  "improvements": [
+    {
+      "noteId": 2,
+      "improvedContent": "...",
+      "changes": "Made more specific with triggers"
     }
+  ]
+}`;
 
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: improvePrompt }] }],
+        generationConfig: { 
+          temperature: 0.7,
+          maxOutputTokens: 2048,
+          responseMimeType: "application/json"
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to improve notes');
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const result = JSON.parse(text);
+
+  return new Response(
+    JSON.stringify(result),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+// ===== ANALYZE POND ADVANCED =====
+if (requestType === 'analyze-pond-advanced') {
+  console.log('Analyzing pond notes with grading...');
+  
+  const { notesContent, noteCount } = requestBody;
+
+  const analyzePrompt = `You're a Director of Product who's worked at Apple, Stripe, Coinbase, Google, and Meta. You've interviewed 500+ PMs and seen what separates the great from the mediocre. You don't sugarcoat.
+
+NOTES TO REVIEW (${noteCount} total):
+${notesContent}
+
+**YOUR BRUTAL ASSESSMENT:**
+
+Give them a grade (A-F) and tell them EXACTLY what's wrong. No corporate speak. No participation trophies.
+
+**What makes notes ACTUALLY useful:**
+- TRIGGERS: "When X happens, I do Y" - specific situational prompts
+- NUMBERS: Actual metrics, not "increase engagement"
+- NAMED EXAMPLES: "Stripe's API design" not "good API design"
+- FAILURES: What went wrong and why
+- DECISIONS: The choice AND what you said no to
+
+**What makes notes GARBAGE:**
+- Generic platitudes ("focus on users")
+- No context ("prioritization is important")
+- Theory without application
+- Stuff you could find on a blog post
+
+**YOUR REVIEW (200 words max):**
+
+Start with: "Grade: [A-F]"
+
+Then be DIRECT:
+1. What percentage of these notes are actually referenceable? (Be honest)
+2. Quote 1-2 specific examples of notes that are either excellent or terrible
+3. What's the ONE change that would 2x the value of this collection?
+4. Should they delete any of these? Which ones and why?
+
+No fluff. No "great start!" Talk to them like they're a Senior PM who can handle direct feedback.`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: analyzePrompt }] }],
+        generationConfig: { 
+          temperature: 0.9,
+          maxOutputTokens: 1500,
+          responseMimeType: "text/plain"
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to analyze notes');
+  }
+
+  const data = await response.json();
+  const review = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Failed to generate review';
+
+  return new Response(
+    JSON.stringify({ review }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
     // ===== MAIN EVALUATION =====
     const { question, answer, category, difficulty, userEloRating, questionEloDifficulty } = requestBody;
 
