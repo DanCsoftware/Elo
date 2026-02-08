@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
-import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { Loader2, Plus, Trash2, Sparkles, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -25,8 +24,6 @@ interface AIReview {
 
 const Pond = () => {
   const { user, signInWithGoogle } = useAuth();
-  const { isApproved, loading: trialLoading } = useTrialStatus();
-  
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -37,31 +34,6 @@ const Pond = () => {
   const [analyzingAll, setAnalyzingAll] = useState(false);
   const [implementing, setImplementing] = useState(false);
   const [aiReview, setAiReview] = useState<AIReview | null>(null);
-
-  // Show beta access message if not approved
-  if (!trialLoading && user && !isApproved) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
-          <h1 className="text-3xl font-bold mb-3">Access Required</h1>
-          <p className="text-muted-foreground text-lg mb-6">
-            Elo is currently in private beta.
-          </p>
-          <p className="text-muted-foreground mb-6">
-            To get access, DM me on LinkedIn and I'll send you an invite to check it out!
-          </p>
-          <a 
-            href="https://www.linkedin.com/in/ddotc/" 
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary underline hover:text-primary/80"
-          >
-            Connect on LinkedIn →
-          </a>
-        </div>
-      </Layout>
-    );
-  }
 
   useEffect(() => {
     if (user) {
@@ -297,7 +269,7 @@ const Pond = () => {
     );
   }
 
-  if (loading || trialLoading) {
+  if (loading) {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-[400px]">

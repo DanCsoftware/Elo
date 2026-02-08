@@ -3,7 +3,6 @@ import Layout from '@/components/Layout';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserStats } from '@/hooks/useUserStats';
-import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -36,7 +35,6 @@ interface Session {
 const History = () => {
   const { user } = useAuth();
   const { stats, refreshStats } = useUserStats();
-  const { isApproved, loading: trialLoading } = useTrialStatus();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -44,31 +42,6 @@ const History = () => {
   const [canReset, setCanReset] = useState(true);
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [nextResetDate, setNextResetDate] = useState<string | null>(null);
-
-  // Show beta access message if not approved
-  if (!trialLoading && user && !isApproved) {
-    return (
-      <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
-          <h1 className="text-3xl font-bold mb-3">Access Required</h1>
-          <p className="text-muted-foreground text-lg mb-6">
-            Elo is currently in private beta.
-          </p>
-          <p className="text-muted-foreground mb-6">
-            To get access, DM me on LinkedIn and I'll send you an invite to check it out!
-          </p>
-          <a 
-            href="https://www.linkedin.com/in/ddotc/" 
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary underline hover:text-primary/80"
-          >
-            Connect on LinkedIn →
-          </a>
-        </div>
-      </Layout>
-    );
-  }
 
   useEffect(() => {
     if (!user) {
@@ -204,7 +177,7 @@ const History = () => {
     ? sessions
     : sessions.filter(s => s.category === categoryMap[selectedCategory]);
 
-  if (loading || trialLoading) {
+  if (loading) {
     return (
       <Layout>
         <div className="flex items-center justify-center min-h-[400px]">
