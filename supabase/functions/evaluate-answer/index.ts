@@ -643,6 +643,11 @@ Return ONLY valid JSON. Quote their actual answer in feedback to prove you read 
   "strengths": ["Quote their words: 'X' - why this is strong", "...", "..."],
   "weaknesses": ["Quote their words: 'Y' - how to upgrade: 'Z'", "...", "..."],
   "detailedFeedback": "Write 2-3 actionable insights (150-200 words). Start with what they did well in 1-2 sentences. Then provide 2-3 specific improvements with concrete examples from THEIR answer. Use natural prose, not bullet points. Be constructive and specific. Example: 'You correctly identified the activation issue. To strengthen this: (1) Specify the exact metrics you'd track - instead of 'activation rate', say 'Day 1 activation: % who complete onboarding AND create first tab set'. (2) Your trade-off discussion mentions 'relieving adaptation' but misses the strategic cost - offering horizontal tabs dilutes Arc's unique brand identity and prevents users from discovering the vertical tab experience that drives your 60% higher retention. (3) Make your hypothesis explicit and falsifiable with clear success criteria.'",
+    "categoryScores": {
+    "strategy": <1-10>,
+    "metrics": <1-10>,
+    "prioritization": <1-10>,
+    "design": <1-10>
   "skillScores": {"problem_framing": <1-10>, "user_empathy": <1-10>, "metrics_definition": <1-10>, "tradeoff_analysis": <1-10>, "prioritization": <1-10>, "strategic_thinking": <1-10>, "stakeholder_mgmt": <1-10>, "communication": <1-10>, "technical_judgment": <1-10>, "ambiguity_navigation": <1-10>, "systems_thinking": <1-10>, "market_sense": <1-10>, "experimentation": <1-10>, "risk_assessment": <1-10>}
 }
 
