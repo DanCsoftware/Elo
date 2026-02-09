@@ -83,14 +83,35 @@ export function useUserStats() {
         userStats = newStats;
       }
 
-      // Fetch all sessions for calculations
-      const { data: sessions, error: sessionsError } = await supabase
+      // Get the most recent ELO reset timestamp
+      const { data: latestReset } = await supabase
+        .from('elo_resets')
+        .select('reset_at')
+        .eq('user_id', user.id)
+        .order('reset_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      console.log('📊 Latest reset:', latestReset?.reset_at || 'none');
+
+      // Fetch sessions ONLY after the most recent reset
+      let sessionsQuery = supabase
         .from('user_sessions')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
+      // If there was a reset, only get sessions after that reset
+      if (latestReset?.reset_at) {
+        sessionsQuery = sessionsQuery.gt('created_at', latestReset.reset_at);
+        console.log('📊 Filtering sessions after reset');
+      }
+
+      const { data: sessions, error: sessionsError } = await sessionsQuery;
+
       if (sessionsError) throw sessionsError;
+
+      console.log(`📊 Calculating stats from ${sessions?.length || 0} sessions (after reset)`);
 
       // If no sessions yet, return default stats
       if (!sessions || sessions.length === 0) {
@@ -134,15 +155,15 @@ export function useUserStats() {
         categoryScores[category] = count > 0 ? (sum / count) : 0;
       });
 
-      // Difficulty breakdown - FIXED: now checks for both lowercase and capitalized
+      // Difficulty breakdown
       const difficultyBreakdown = {
         easy: sessions.filter(s => s.difficulty?.toLowerCase() === 'easy').length,
         medium: sessions.filter(s => s.difficulty?.toLowerCase() === 'medium').length,
         hard: sessions.filter(s => s.difficulty?.toLowerCase() === 'hard').length,
       };
 
-      console.log('Difficulty breakdown:', difficultyBreakdown);
-      console.log('Sample difficulties:', sessions.slice(0, 5).map(s => s.difficulty));
+      console.log('📊 Difficulty breakdown:', difficultyBreakdown);
+      console.log('📊 Sample difficulties:', sessions.slice(0, 5).map(s => s.difficulty));
 
       // Week over week change
       const oneWeekAgo = new Date();

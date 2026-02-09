@@ -55,14 +55,14 @@ const Index = () => {
   if (!user) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6">
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center space-y-6 px-4">
           <div>
-            <h1 className="text-3xl font-bold mb-3">Welcome to Elo</h1>
-            <p className="text-muted-foreground text-lg">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-3">Welcome to Elo</h1>
+            <p className="text-muted-foreground text-base sm:text-lg">
               Practice PM interviews with AI-powered feedback
             </p>
           </div>
-          <Button onClick={signInWithGoogle} size="lg">
+          <Button onClick={signInWithGoogle} size="lg" className="w-full sm:w-auto">
             Sign In with Google to Start
           </Button>
         </div>
@@ -97,9 +97,9 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Stats Grid */}
-        <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-border">
+      <div className="space-y-4 sm:space-y-6">
+        {/* Stats Grid - RESPONSIVE: Stack to 1 column on mobile */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-border">
           <StatCard
             label="Solved"
             value={`${stats?.totalSolved || 0}/200`}
@@ -117,9 +117,9 @@ const Index = () => {
             label="This Week"
             value={`${stats?.thisWeekChange > 0 ? '+' : ''}${stats?.thisWeekChange.toFixed(0)}%`}
           />
-          <div className="bg-card border border-border p-4 col-span-2 md:col-span-1 lg:col-span-2">
+          <div className="bg-card border border-border p-3 sm:p-4 col-span-1 sm:col-span-2 md:col-span-1 lg:col-span-2">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Difficulty</p>
-            <div className="flex items-center gap-4 font-mono text-sm">
+            <div className="flex items-center gap-3 sm:gap-4 font-mono text-xs sm:text-sm">
               <span className="text-success">E: {stats?.difficultyBreakdown.easy || 0}</span>
               <span className="text-warning">M: {stats?.difficultyBreakdown.medium || 0}</span>
               <span className="text-destructive">H: {stats?.difficultyBreakdown.hard || 0}</span>
@@ -127,40 +127,44 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Rating Journey */}
+        {/* Rating Journey - RESPONSIVE: Smaller padding, scrollable chart */}
         {stats && stats.totalSolved > 0 && (
-          <section className="bg-card border border-border p-5 space-y-4">
+          <section className="bg-card border border-border p-3 sm:p-5 space-y-3 sm:space-y-4 overflow-hidden">
             {/* Percentile Badge */}
             {!percentileLoading && percentile !== null && (
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 rounded-lg">
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <span className="text-sm font-semibold text-primary">
+                <span className="text-xs sm:text-sm font-semibold text-primary">
                   Top {percentile}% of {totalUsers} users
                 </span>
               </div>
             )}
 
-            {/* Rating Chart */}
-            <RatingChart 
-              sessions={sessions}
-              resets={resets}
-              currentRating={stats.eloRating}
-            />
+            {/* Rating Chart - RESPONSIVE: Horizontal scroll on mobile */}
+            <div className="overflow-x-auto -mx-3 sm:-mx-5 px-3 sm:px-5">
+              <div className="min-w-[600px]">
+                <RatingChart 
+                  sessions={sessions}
+                  resets={resets}
+                  currentRating={stats.eloRating}
+                />
+              </div>
+            </div>
           </section>
         )}
 
-        {/* NEW: Focus Areas - Using actual skill data */}
+        {/* Focus Areas - RESPONSIVE: Smaller padding */}
         {stats && stats.totalSolved >= 5 && (
-          <section className="bg-card border border-border p-5">
+          <section className="bg-card border border-border p-3 sm:p-5">
             <FocusAreas />
           </section>
         )}
 
-        {/* Elo Rating Display */}
+        {/* Elo Rating Display - RESPONSIVE: Stack on mobile */}
         {stats && (
-          <section className="bg-card border border-border p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold uppercase tracking-wide">
+          <section className="bg-card border border-border p-3 sm:p-5">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-xs sm:text-sm font-semibold uppercase tracking-wide">
                 Your PM Rating
               </h2>
               <span className="text-xs text-muted-foreground">
@@ -168,8 +172,9 @@ const Index = () => {
               </span>
             </div>
             
-            <div className="flex items-center gap-4">
-              <div className="text-5xl font-bold text-primary">
+            {/* RESPONSIVE: Stack rating and description on mobile */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+              <div className="text-4xl sm:text-5xl font-bold text-primary">
                 {stats.eloRating}
               </div>
               <div className="flex-1">
@@ -190,10 +195,12 @@ const Index = () => {
           </section>
         )}
 
-        {/* Category Performance */}
-        <section className="bg-card border border-border p-5 space-y-4">
+        {/* Category Performance - RESPONSIVE: Smaller padding */}
+        <section className="bg-card border border-border p-3 sm:p-5 space-y-3 sm:space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Category Performance</h2>
+            <h2 className="text-xs sm:text-sm font-semibold text-foreground uppercase tracking-wide">
+              Category Performance
+            </h2>
           </div>
           {skillProgress.length > 0 ? (
             <div className="space-y-3">
@@ -206,20 +213,20 @@ const Index = () => {
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-xs sm:text-sm">
               No data yet. Start practicing to see your category performance!
             </p>
           )}
         </section>
 
-        {/* Action Button */}
-        <section className="flex gap-3">
-          <Button variant="default" size="sm" asChild>
+        {/* Action Buttons - RESPONSIVE: Stack on mobile, full width */}
+        <section className="flex flex-col sm:flex-row gap-3">
+          <Button variant="default" size="sm" asChild className="w-full sm:w-auto">
             <Link to="/practice">
               Practice
             </Link>
           </Button>
-          <Button variant="secondary" size="sm" asChild>
+          <Button variant="secondary" size="sm" asChild className="w-full sm:w-auto">
             <Link to="/history">
               History
             </Link>

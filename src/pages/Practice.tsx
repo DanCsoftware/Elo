@@ -344,7 +344,7 @@ const Practice = () => {
           <div>
             <h1 className="text-3xl font-bold mb-3">Access Required</h1>
             <p className="text-muted-foreground text-lg mb-6">
-              Elo is currently in private beta.
+              Elo is currently in private alpha.
             </p>
             <p className="text-sm text-muted-foreground mb-4">
               To get access, DM me on LinkedIn and I'll send you an invite to check it out!
@@ -371,13 +371,13 @@ const Practice = () => {
           <div>
             <h1 className="text-3xl font-bold mb-3">Beta Access Complete</h1>
             <p className="text-muted-foreground text-lg mb-6">
-              You've completed your beta trial questions. Thanks for testing Elo!
+              You've completed your alpha trial. Thanks for testing Elo!
             </p>
             <p className="text-sm text-muted-foreground mb-4">
               I'd love to hear your feedback. DM me on LinkedIn to share your thoughts or request more access.
             </p>
             <a 
-              href="https://linkedin.com/in/YOUR_LINKEDIN" 
+              href="https://linkedin.com/in/ddotc" 
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block text-primary underline text-sm hover:text-primary/80"
