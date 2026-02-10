@@ -287,11 +287,10 @@ const Pond = () => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary"></div>
                 <h2 className="text-lg font-semibold">The Pond</h2>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {notes.length} {notes.length === 1 ? 'note' : 'notes'} • Synced to cloud
+                  {notes.length} {notes.length === 1 ? 'note' : 'notes'}
               </p>
             </div>
             <Button onClick={createNewNote} size="sm">
@@ -346,7 +345,6 @@ const Pond = () => {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" />
                     Review Note Quality
                   </>
                 )}
@@ -406,7 +404,6 @@ const Pond = () => {
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4" />
                       Implement Recommendations
                     </>
                   )}
