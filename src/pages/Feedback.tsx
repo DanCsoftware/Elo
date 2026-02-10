@@ -282,7 +282,7 @@ const Feedback = () => {
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   {loadingExample 
-                    ? `AI is crafting a ${selectedCompany.charAt(0).toUpperCase() + selectedCompany.slice(1)}-style reference answer`
+                    ? `Elo is crafting a ${selectedCompany.charAt(0).toUpperCase() + selectedCompany.slice(1)}-style reference answer`
                     : 'Finding specific ways to improve your reasoning'
                   }
                 </p>
