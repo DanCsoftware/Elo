@@ -462,9 +462,6 @@ const Pond = () => {
                     </>
                   ) : (
                     <>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        ☁️ Saved to cloud
-                      </span>
                       <Button onClick={startEditing} variant="outline" size="sm">
                         Edit
                       </Button>
