@@ -59,7 +59,7 @@ const Index = () => {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold mb-3">Welcome to Elo</h1>
             <p className="text-muted-foreground text-base sm:text-lg">
-              Practice PM interviews with AI-powered feedback
+              Sharpen your PM mindset through deliberate practice
             </p>
           </div>
           <Button onClick={signInWithGoogle} size="lg" className="w-full sm:w-auto">
@@ -188,7 +188,7 @@ const Index = () => {
                   {stats.eloRating >= 2000 && 'Legendary PM'}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Practice to increase your rating
+                  Challenge yourself to level up your skills
                 </p>
               </div>
             </div>
