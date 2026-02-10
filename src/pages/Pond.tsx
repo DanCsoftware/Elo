@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Plus, Trash2, Sparkles, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Note {
@@ -76,7 +76,7 @@ const Pond = () => {
         .single();
 
       if (error) throw error;
-      
+
       setNotes([data, ...notes]);
       setSelectedNote(data);
       setEditTitle(data.title || '');
@@ -147,22 +147,34 @@ const Pond = () => {
   };
 
   const analyzeAllNotes = async () => {
-    if (notes.length === 0) {
-      toast.error('No notes to analyze');
+    // Filter out empty/untitled notes with no real content
+    const notesWithContent = notes.filter(n =>
+      n.content && n.content.trim().length > 20
+    );
+
+    // Guard: nothing meaningful to analyze
+    if (notesWithContent.length === 0) {
+      toast.error('Add some notes first before reviewing quality!');
+      return;
+    }
+
+    // Guard: too few notes for a meaningful review
+    if (notesWithContent.length < 3) {
+      toast.error(`Only ${notesWithContent.length} note(s) with content. Add at least 3 notes for a meaningful review.`);
       return;
     }
 
     setAnalyzingAll(true);
     setAiReview(null);
-    
+
     try {
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
       const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      const allNotesContent = notes.map((n, idx) => 
+
+      const allNotesContent = notesWithContent.map((n, idx) =>
         `Note ${idx + 1}: ${n.title}\n${n.content}`
       ).join('\n\n---\n\n');
-      
+
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/evaluate-answer?type=analyze-pond-advanced`,
         {
@@ -173,22 +185,18 @@ const Pond = () => {
           },
           body: JSON.stringify({
             notesContent: allNotesContent,
-            noteCount: notes.length,
+            noteCount: notesWithContent.length,
           }),
         }
       );
 
-      if (!response.ok) {
-        throw new Error('Failed to analyze notes');
-      }
+      if (!response.ok) throw new Error('Failed to analyze notes');
 
       const data = await response.json();
-      
-      // Parse the review
       const reviewText = data.review || '';
       const gradeMatch = reviewText.match(/Grade:\s*([A-F][+-]?)/i);
-      const grade = gradeMatch ? gradeMatch[1] : 'B';
-      
+      const grade = gradeMatch ? gradeMatch[1] : 'N/A';
+
       setAiReview({
         grade,
         summary: reviewText.substring(0, 150) + '...',
@@ -196,7 +204,7 @@ const Pond = () => {
         notesToDelete: [],
         strongestNotes: [],
       });
-      
+
       toast.success('Analysis complete!');
     } catch (error) {
       console.error('Error analyzing notes:', error);
@@ -211,8 +219,6 @@ const Pond = () => {
 
     setImplementing(true);
     try {
-      // For now, just show a success message
-      // In the future, this would call an AI endpoint to actually modify notes
       toast.success('Recommendations noted! Consider making these changes manually for now.');
       setAiReview(null);
     } catch (error) {
@@ -282,15 +288,13 @@ const Pond = () => {
   return (
     <Layout>
       <div className="flex h-[calc(100vh-8rem)] gap-4">
-        {/* Sidebar - Notes List */}
+        {/* Sidebar */}
         <div className="w-80 bg-card border border-border rounded-lg p-4 flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold">The Pond</h2>
-              </div>
+              <h2 className="text-lg font-semibold">The Pond</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                  {notes.length} {notes.length === 1 ? 'note' : 'notes'}
+                {notes.length} {notes.length === 1 ? 'note' : 'notes'}
               </p>
             </div>
             <Button onClick={createNewNote} size="sm">
@@ -331,22 +335,19 @@ const Pond = () => {
                 ))}
               </div>
 
-              {/* Review Button */}
               <Button
                 onClick={analyzeAllNotes}
                 disabled={analyzingAll}
                 variant="outline"
-                className="mt-4 w-full gap-2"
+                className="mt-4 w-full"
               >
                 {analyzingAll ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     Analyzing...
                   </>
                 ) : (
-                  <>
-                    Review Note Quality
-                  </>
+                  'Review Note Quality'
                 )}
               </Button>
             </>
@@ -356,7 +357,6 @@ const Pond = () => {
         {/* Main Editor */}
         <div className="flex-1 bg-card border border-border rounded-lg p-6 flex flex-col">
           {aiReview ? (
-            /* AI Review Results */
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold">Note Quality Review</h2>
@@ -365,7 +365,6 @@ const Pond = () => {
                 </Button>
               </div>
 
-              {/* Grade */}
               <div className="flex items-center gap-4 p-4 bg-secondary/30 rounded-lg border border-border">
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground mb-1">Overall Grade</p>
@@ -380,7 +379,6 @@ const Pond = () => {
                 </div>
               </div>
 
-              {/* AI Feedback */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">AI Analysis</h3>
                 <div className="bg-secondary/20 rounded-lg p-4 border border-border">
@@ -390,22 +388,15 @@ const Pond = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex gap-3 pt-4 border-t border-border">
-                <Button 
-                  onClick={implementRecommendations}
-                  disabled={implementing}
-                  className="gap-2"
-                >
+                <Button onClick={implementRecommendations} disabled={implementing}>
                   {implementing ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       Implementing...
                     </>
                   ) : (
-                    <>
-                      Implement Recommendations
-                    </>
+                    'Implement Recommendations'
                   )}
                 </Button>
                 <Button variant="outline" onClick={() => setAiReview(null)}>
@@ -422,7 +413,6 @@ const Pond = () => {
             </div>
           ) : (
             <>
-              {/* Header */}
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
                 <div className="flex-1">
                   {isEditing ? (
@@ -442,7 +432,7 @@ const Pond = () => {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   {isEditing ? (
                     <>
@@ -465,11 +455,7 @@ const Pond = () => {
                       <Button onClick={startEditing} variant="outline" size="sm">
                         Edit
                       </Button>
-                      <Button
-                        onClick={() => deleteNote(selectedNote.id)}
-                        variant="ghost"
-                        size="sm"
-                      >
+                      <Button onClick={() => deleteNote(selectedNote.id)} variant="ghost" size="sm">
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </>
@@ -477,7 +463,6 @@ const Pond = () => {
                 </div>
               </div>
 
-              {/* Content */}
               <div className="flex-1 overflow-y-auto">
                 {isEditing ? (
                   <textarea
